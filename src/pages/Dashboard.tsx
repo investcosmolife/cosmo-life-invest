@@ -16,7 +16,6 @@ export const Dashboard = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
-  const [userInvestment, setUserInvestment] = useState<number | null>(null);
   const { user, showAlert, hapticFeedback } = useTelegram();
   const { wallet, isLoading: walletLoading } = useTelegramWallet();
 
@@ -28,7 +27,6 @@ export const Dashboard = () => {
     }
     
     showAlert(`Перенаправление в личный кабинет для покупки ${percentage}% доли`);
-    setUserInvestment(percentage);
     setShowCalculator(false);
     setShowCabinet(true);
     hapticFeedback('heavy');
@@ -79,13 +77,19 @@ export const Dashboard = () => {
     );
   }
 
-  // Show personal cabinet
-  if (showCabinet) {
+  // Show personal cabinet only if wallet is connected
+  if (showCabinet && wallet.isConnected) {
     return (
       <TelegramLayout>
         <PersonalCabinet onBack={() => setShowCabinet(false)} />
       </TelegramLayout>
     );
+  }
+
+  // If trying to show cabinet but wallet not connected, redirect to wallet connection
+  if (showCabinet && !wallet.isConnected) {
+    setShowCabinet(false);
+    setShowWalletConnection(true);
   }
 
   return (
@@ -176,28 +180,6 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Current Investment Status */}
-        {userInvestment && (
-          <Card className="border-green-200 bg-gradient-to-r from-green-50 to-blue-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-800">
-                <DollarSign className="h-5 w-5" />
-                Ваша инвестиция
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600 mb-2">
-                  {userInvestment}% владения
-                </div>
-                <div className="text-lg text-gray-700">
-                  Прогноз: {formatCurrency((userInvestment / 100) * totalProjectedRevenue)}/год
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Services Overview */}
         <div id="services">
           <h2 className="text-xl font-bold mb-4 text-center">
@@ -208,7 +190,7 @@ export const Dashboard = () => {
             <ServiceCard
               key={key}
               serviceKey={key as keyof typeof SERVICE_REVENUE}
-              userPercentage={userInvestment || 1}
+              userPercentage={1} // Показываем прогноз для 1%
             />
           ))}
         </div>

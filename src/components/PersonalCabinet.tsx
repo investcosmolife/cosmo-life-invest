@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 import { calculateInvestmentReturnsSync, formatCurrency, COSMO_WALLET_ADDRESS, getTonPrice } from '@/utils/investment';
-import { UserInvestment, Dividend } from '@/types/telegram';
-import { ArrowLeft, Wallet, TrendingUp, Download, Plus, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Wallet, TrendingUp, Plus, CheckCircle } from 'lucide-react';
 
 interface PersonalCabinetProps {
   onBack: () => void;
@@ -16,13 +16,11 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
   const [percentage, setPercentage] = useState(0.01);
   const [tonPrice, setTonPrice] = useState(2.5);
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
-  const [investments, setInvestments] = useState<UserInvestment[]>([]);
-  const [dividends, setDividends] = useState<Dividend[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user, showAlert, hapticFeedback, notificationFeedback } = useTelegram();
   const { wallet, sendPayment } = useTelegramWallet();
 
-  // Fetch TON price on component mount
+  // Загружаем курс TON при монтировании компонента
   useEffect(() => {
     const fetchTonPrice = async () => {
       try {
@@ -38,41 +36,11 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
     fetchTonPrice();
   }, []);
 
-  // Mock data for demonstration
-  useEffect(() => {
-    // Simulate existing investments
-    const mockInvestments: UserInvestment[] = [
-      {
-        id: '1',
-        userId: user?.id || 0,
-        percentage: 1,
-        tonAmount: 1000,
-        usdAmount: 1000 * tonPrice,
-        purchaseDate: new Date('2024-01-15'),
-        status: 'completed',
-        transactionHash: 'abc123'
-      }
-    ];
-
-    const mockDividends: Dividend[] = [
-      {
-        id: '1',
-        userId: user?.id || 0,
-        amount: 13645.83,
-        currency: 'USDT',
-        date: new Date('2024-06-01'),
-        status: 'paid',
-        transactionHash: 'div123'
-      }
-    ];
-
-    setInvestments(mockInvestments);
-    setDividends(mockDividends);
-  }, [user?.id, tonPrice]);
-
   const investment = calculateInvestmentReturnsSync(percentage, tonPrice);
-  const totalInvestment = investments.reduce((sum, inv) => sum + inv.percentage, 0);
-  const totalDividends = dividends.reduce((sum, div) => sum + div.amount, 0);
+
+  // Реальные данные - пока нулевые, так как нет покупок
+  const totalInvestment = 0; // Реальная сумма инвестиций пользователя
+  const totalDividends = 0; // Реальная сумма дивидендов
 
   const handlePurchase = async () => {
     if (!wallet.isConnected) {
@@ -90,7 +58,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
 
     try {
       const amount = investment.tonAmount;
-      const comment = `CosmoLife_${percentage}%_${user?.id}`;
+      const comment = `CosmoLife_${percentage}%_${user?.id || 'user'}`;
       
       console.log('Sending payment:', {
         amount,
@@ -103,20 +71,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
       if (success) {
         showAlert(`Платеж на сумму ${investment.tonAmount} TON отправлен. После подтверждения транзакции доля будет добавлена в ваш портфель.`);
         notificationFeedback('success');
-        
-        // Add pending investment
-        const newInvestment: UserInvestment = {
-          id: Date.now().toString(),
-          userId: user?.id || 0,
-          percentage,
-          tonAmount: investment.tonAmount,
-          usdAmount: investment.usdAmount,
-          purchaseDate: new Date(),
-          status: 'pending'
-        };
-        
-        setInvestments(prev => [...prev, newInvestment]);
-        setPercentage(0.01); // Reset form
+        setPercentage(0.01); // Сбрасываем форму
       }
       
     } catch (error) {
@@ -126,11 +81,6 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleWithdrawDividends = (dividendId: string, currency: 'TON' | 'USDT') => {
-    hapticFeedback('light');
-    showAlert(`Запрос на вывод дивидендов в ${currency} отправлен. Средства поступят на ваш кошелек в течение 24 часов.`);
   };
 
   return (
@@ -168,7 +118,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         </CardHeader>
       </Card>
 
-      {/* Current Holdings */}
+      {/* Current Holdings - показываем реальные данные */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -178,48 +128,25 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{totalInvestment}%</div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-600">{totalInvestment}%</div>
               <div className="text-sm text-gray-600">Общая доля</div>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-lg font-bold text-blue-600">
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-lg font-bold text-gray-600">
                 {formatCurrency(totalInvestment * 163750 / 100)}
               </div>
               <div className="text-sm text-gray-600">Прогноз/год</div>
             </div>
           </div>
 
-          {investments.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm">История покупок:</h4>
-              {investments.map((inv) => (
-                <div key={inv.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <div>
-                    <div className="font-medium">{inv.percentage}%</div>
-                    <div className="text-xs text-gray-600">
-                      {inv.purchaseDate.toLocaleDateString('ru-RU')}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">{inv.tonAmount} TON</div>
-                    <div className="text-xs text-gray-500">{formatCurrency(inv.usdAmount)}</div>
-                    <div className={`text-xs ${
-                      inv.status === 'completed' ? 'text-green-600' : 
-                      inv.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
-                      {inv.status === 'completed' ? 'Завершено' : 
-                       inv.status === 'pending' ? 'Ожидание' : 'Ошибка'}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="text-center text-gray-500 text-sm py-4">
+            У вас пока нет инвестиций в проект
+          </div>
         </CardContent>
       </Card>
 
-      {/* Buy More Shares */}
+      {/* Buy Shares */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -288,7 +215,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         </CardContent>
       </Card>
 
-      {/* Dividends */}
+      {/* Dividends - показываем реальные данные */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -297,57 +224,16 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center p-3 bg-yellow-50 rounded-lg mb-4">
-            <div className="text-2xl font-bold text-yellow-600">
+          <div className="text-center p-3 bg-gray-50 rounded-lg mb-4">
+            <div className="text-2xl font-bold text-gray-600">
               {formatCurrency(totalDividends)}
             </div>
             <div className="text-sm text-gray-600">Общая сумма дивидендов</div>
           </div>
 
-          {dividends.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm">История дивидендов:</h4>
-              {dividends.map((dividend) => (
-                <div key={dividend.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                  <div>
-                    <div className="font-medium">
-                      {dividend.amount.toLocaleString('ru-RU')} {dividend.currency}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      {dividend.date.toLocaleDateString('ru-RU')}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-xs mb-1 ${
-                      dividend.status === 'paid' ? 'text-green-600' : 'text-yellow-600'
-                    }`}>
-                      {dividend.status === 'paid' ? 'Выплачено' : 'Ожидание'}
-                    </div>
-                    {dividend.status === 'pending' && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleWithdrawDividends(dividend.id, 'TON')}
-                          className="text-xs px-2 py-1 h-6"
-                        >
-                          TON
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleWithdrawDividends(dividend.id, 'USDT')}
-                          className="text-xs px-2 py-1 h-6"
-                        >
-                          USDT
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="text-center text-gray-500 text-sm py-4">
+            У вас пока нет дивидендов
+          </div>
 
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-800">

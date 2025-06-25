@@ -64,7 +64,7 @@ export const WalletConnection = ({ onConnect }: WalletConnectionProps) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-yellow-800">
           <AlertCircle className="h-5 w-5" />
-          Кошелек не подключен
+          Подключите Telegram кошелек
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -74,16 +74,17 @@ export const WalletConnection = ({ onConnect }: WalletConnectionProps) => {
           </p>
           <Button onClick={handleConnect} className="w-full bg-blue-600 hover:bg-blue-700">
             <Wallet className="h-4 w-4 mr-2" />
-            Подключить кошелек
+            Подключить @wallet
           </Button>
           <div className="text-xs text-gray-600 space-y-1">
             <p>💡 Инструкция:</p>
-            <p>1. Нажмите "Подключить кошелек"</p>
-            <p>2. Следуйте инструкциям Telegram</p>
-            <p>3. Подтвердите подключение</p>
+            <p>1. Нажмите "Подключить @wallet"</p>
+            <p>2. Откройте @wallet в Telegram</p>
+            <p>3. Подключите или создайте кошелек</p>
+            <p>4. Вернитесь в это приложение</p>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  }
 };
