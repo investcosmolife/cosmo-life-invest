@@ -1,12 +1,12 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 import { calculateInvestmentReturnsSync, formatCurrency, COSMO_WALLET_ADDRESS, getTonPrice } from '@/utils/investment';
 import { UserInvestment, Dividend } from '@/types/telegram';
-import { ArrowLeft, Wallet, TrendingUp, Download, Plus } from 'lucide-react';
+import { ArrowLeft, Wallet, TrendingUp, Download, Plus, CheckCircle } from 'lucide-react';
 
 interface PersonalCabinetProps {
   onBack: () => void;
@@ -19,7 +19,8 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
   const [investments, setInvestments] = useState<UserInvestment[]>([]);
   const [dividends, setDividends] = useState<Dividend[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { user, tg, showAlert, hapticFeedback, notificationFeedback } = useTelegram();
+  const { user, showAlert, hapticFeedback, notificationFeedback } = useTelegram();
+  const { wallet, sendPayment } = useTelegramWallet();
 
   // Fetch TON price on component mount
   useEffect(() => {
@@ -74,8 +75,8 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
   const totalDividends = dividends.reduce((sum, div) => sum + div.amount, 0);
 
   const handlePurchase = async () => {
-    if (!tg) {
-      showAlert('Telegram WebApp недоступен');
+    if (!wallet.isConnected) {
+      showAlert('Кошелек не подключен');
       return;
     }
 
@@ -88,32 +89,39 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
     hapticFeedback('medium');
 
     try {
-      // Create payment link for TON
       const amount = investment.tonAmount;
-      const paymentUrl = `ton://transfer/${COSMO_WALLET_ADDRESS}?amount=${amount}&text=CosmoLife_${percentage}%_${user?.id}`;
+      const comment = `CosmoLife_${percentage}%_${user?.id}`;
       
-      // Open TON payment in Telegram
-      tg.openLink(paymentUrl);
+      console.log('Sending payment:', {
+        amount,
+        toAddress: COSMO_WALLET_ADDRESS,
+        comment
+      });
       
-      showAlert(`Переход к оплате ${investment.tonAmount} TON (${formatCurrency(investment.usdAmount)}) за ${percentage}% доли в Cosmo Life`);
-      notificationFeedback('success');
+      const success = await sendPayment(amount, COSMO_WALLET_ADDRESS, comment);
       
-      // In real app, you would track the transaction and update the database
-      // For now, we'll simulate adding to pending investments
-      const newInvestment: UserInvestment = {
-        id: Date.now().toString(),
-        userId: user?.id || 0,
-        percentage,
-        tonAmount: investment.tonAmount,
-        usdAmount: investment.usdAmount,
-        purchaseDate: new Date(),
-        status: 'pending'
-      };
-      
-      setInvestments(prev => [...prev, newInvestment]);
+      if (success) {
+        showAlert(`Платеж на сумму ${investment.tonAmount} TON отправлен. После подтверждения транзакции доля будет добавлена в ваш портфель.`);
+        notificationFeedback('success');
+        
+        // Add pending investment
+        const newInvestment: UserInvestment = {
+          id: Date.now().toString(),
+          userId: user?.id || 0,
+          percentage,
+          tonAmount: investment.tonAmount,
+          usdAmount: investment.usdAmount,
+          purchaseDate: new Date(),
+          status: 'pending'
+        };
+        
+        setInvestments(prev => [...prev, newInvestment]);
+        setPercentage(0.01); // Reset form
+      }
       
     } catch (error) {
-      showAlert('Ошибка при создании платежа');
+      console.error('Payment error:', error);
+      showAlert('Ошибка при отправке платежа');
       notificationFeedback('error');
     } finally {
       setIsLoading(false);
@@ -127,7 +135,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header with wallet info */}
       <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-3">
@@ -139,11 +147,17 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
+            <div className="flex-1">
               <CardTitle className="text-xl">Личный кабинет</CardTitle>
               <p className="text-blue-100 text-sm">
                 {user?.first_name} {user?.last_name}
               </p>
+              <div className="flex items-center gap-2 mt-1">
+                <CheckCircle className="h-4 w-4 text-green-300" />
+                <span className="text-green-300 text-xs">
+                  Кошелек: {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
+                </span>
+              </div>
               {!isLoadingPrice && (
                 <p className="text-blue-200 text-xs">
                   Курс TON: ${tonPrice.toFixed(2)}
@@ -244,6 +258,12 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
                 {formatCurrency(investment.projectedAnnualReturn)}
               </span>
             </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Адрес получения:</span>
+              <span className="font-mono text-xs">
+                {COSMO_WALLET_ADDRESS.slice(0, 8)}...{COSMO_WALLET_ADDRESS.slice(-8)}
+              </span>
+            </div>
             {!isLoadingPrice && (
               <div className="text-xs text-gray-600">
                 Курс TON: ${tonPrice.toFixed(2)}
@@ -253,13 +273,18 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
 
           <Button
             onClick={handlePurchase}
-            disabled={isLoading || isLoadingPrice || percentage < 0.01 || percentage > 20}
+            disabled={isLoading || isLoadingPrice || percentage < 0.01 || percentage > 20 || !wallet.isConnected}
             className="w-full bg-green-600 hover:bg-green-700 font-bold py-3"
           >
-            {isLoading ? 'Обработка...' : 
+            {isLoading ? 'Отправка платежа...' : 
              isLoadingPrice ? 'Загрузка курса...' :
+             !wallet.isConnected ? 'Кошелек не подключен' :
              `💰 Купить ${percentage}% за ${investment.tonAmount} TON`}
           </Button>
+
+          <div className="text-xs text-center text-gray-500">
+            💡 Платеж будет отправлен через ваш кошелек Telegram
+          </div>
         </CardContent>
       </Card>
 

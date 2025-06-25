@@ -5,18 +5,28 @@ import { Button } from '@/components/ui/button';
 import { ServiceCard } from '@/components/ServiceCard';
 import { InvestmentCalculator } from '@/components/InvestmentCalculator';
 import { PersonalCabinet } from '@/components/PersonalCabinet';
+import { WalletConnection } from '@/components/WalletConnection';
 import { TelegramLayout } from '@/components/TelegramLayout';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 import { SERVICE_REVENUE, formatCurrency } from '@/utils/investment';
-import { ArrowUp, TrendingUp, Users, DollarSign, User } from 'lucide-react';
+import { ArrowUp, TrendingUp, Users, DollarSign, User, Wallet } from 'lucide-react';
 
 export const Dashboard = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCabinet, setShowCabinet] = useState(false);
+  const [showWalletConnection, setShowWalletConnection] = useState(false);
   const [userInvestment, setUserInvestment] = useState<number | null>(null);
   const { user, showAlert, hapticFeedback } = useTelegram();
+  const { wallet, isLoading: walletLoading } = useTelegramWallet();
 
   const handleInvest = (percentage: number) => {
+    if (!wallet.isConnected) {
+      showAlert('Сначала подключите кошелек Telegram');
+      setShowWalletConnection(true);
+      return;
+    }
+    
     showAlert(`Перенаправление в личный кабинет для покупки ${percentage}% доли`);
     setUserInvestment(percentage);
     setShowCalculator(false);
@@ -25,12 +35,49 @@ export const Dashboard = () => {
   };
 
   const handleLoginToCabinet = () => {
+    if (!wallet.isConnected) {
+      setShowWalletConnection(true);
+      return;
+    }
+    
     hapticFeedback('medium');
+    setShowCabinet(true);
+  };
+
+  const handleWalletConnected = () => {
+    setShowWalletConnection(false);
     setShowCabinet(true);
   };
 
   const totalProjectedRevenue = Object.values(SERVICE_REVENUE)
     .reduce((sum, service) => sum + service.totalRevenue, 0);
+
+  // Show wallet connection screen
+  if (showWalletConnection) {
+    return (
+      <TelegramLayout>
+        <div className="space-y-4">
+          <Card className="bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0">
+            <CardHeader className="text-center pb-2">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowWalletConnection(false)}
+                  className="text-white hover:bg-white/20 p-2"
+                >
+                  <ArrowUp className="h-4 w-4 rotate-[-90deg]" />
+                </Button>
+                <CardTitle className="text-xl font-bold">Подключение кошелька</CardTitle>
+              </div>
+            </CardHeader>
+          </Card>
+          
+          <WalletConnection onConnect={handleWalletConnected} />
+        </div>
+      </TelegramLayout>
+    );
+  }
 
   // Show personal cabinet
   if (showCabinet) {
@@ -58,6 +105,16 @@ export const Dashboard = () => {
               <p className="text-sm mb-2">
                 Добро пожаловать, {user?.first_name || 'Инвестор'}! 👋
               </p>
+              {!walletLoading && wallet.isConnected && (
+                <div className="bg-white/20 rounded-lg p-2 mb-2">
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <Wallet className="h-4 w-4 text-green-300" />
+                    <span className="text-green-300">
+                      Кошелек подключен: {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="bg-white/20 rounded-lg p-3">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <Users className="h-4 w-4" />
@@ -95,7 +152,7 @@ export const Dashboard = () => {
                 <div className="text-xs text-gray-600">ROI в год</div>
               </div>
               <div className="text-center p-3 bg-white rounded-lg">
-                <div className="text-lg font-bold text-purple-600">0.001-20%</div>
+                <div className="text-lg font-bold text-purple-600">0.01-20%</div>
                 <div className="text-xs text-gray-600">Доступные доли</div>
               </div>
             </div>
