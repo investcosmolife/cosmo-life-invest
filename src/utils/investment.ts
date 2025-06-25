@@ -38,8 +38,8 @@ export const SERVICE_REVENUE = {
 };
 
 export const calculateInvestmentReturns = (percentage: number): InvestmentData => {
-  const tonAmount = percentage * 100000; // 1% = 100,000 TON, so 0.01% = 100 TON
-  const usdAmount = tonAmount; // Assuming 1 TON ≈ 1 USD for simplicity
+  const tonAmount = percentage * 1000; // 1% = 1,000 TON, so 0.001% = 1 TON
+  const usdAmount = tonAmount * 1; // Assuming 1 TON ≈ 1 USD for simplicity
   
   // Calculate projected annual return based on percentage ownership
   const totalProjectedRevenue = Object.values(SERVICE_REVENUE)
@@ -56,22 +56,23 @@ export const calculateInvestmentReturns = (percentage: number): InvestmentData =
 };
 
 export const getInvestmentLimits = () => ({
-  min: { percentage: 0.01, ton: 100 },
-  max: { percentage: 20, ton: 2000000 },
-  example: { percentage: 1, ton: 10000 }
+  min: { percentage: 0.001, ton: 1 },
+  max: { percentage: 20, ton: 20000 },
+  example: { percentage: 1, ton: 1000 }
 });
 
 export const formatCurrency = (amount: number, currency: 'USD' | 'TON' = 'USD'): string => {
-  const formatter = new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: currency === 'USD' ? 'USD' : undefined,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  });
-  
   if (currency === 'TON') {
-    return `${formatter.format(amount).replace(/[$₽]/, '')} TON`;
+    return `${amount.toLocaleString('ru-RU')} TON`;
   }
   
-  return formatter.format(amount);
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
 };
+
+// Wallet address for receiving payments
+export const COSMO_WALLET_ADDRESS = 'UQBDN8ARRy-7qUYEmx9v6IxaMmcfHrbTrh6ZiFVQnzmsqyBi';

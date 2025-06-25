@@ -4,26 +4,42 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ServiceCard } from '@/components/ServiceCard';
 import { InvestmentCalculator } from '@/components/InvestmentCalculator';
+import { PersonalCabinet } from '@/components/PersonalCabinet';
 import { TelegramLayout } from '@/components/TelegramLayout';
 import { useTelegram } from '@/hooks/useTelegram';
 import { SERVICE_REVENUE, formatCurrency } from '@/utils/investment';
-import { ArrowUp, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { ArrowUp, TrendingUp, Users, DollarSign, User } from 'lucide-react';
 
 export const Dashboard = () => {
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showCabinet, setShowCabinet] = useState(false);
   const [userInvestment, setUserInvestment] = useState<number | null>(null);
   const { user, showAlert, hapticFeedback } = useTelegram();
 
   const handleInvest = (percentage: number) => {
-    // In real app, integrate with Telegram Wallet API
-    showAlert(`Инвестиция ${percentage}% успешно оформлена! Интеграция с TON Wallet будет добавлена.`);
+    showAlert(`Перенаправление в личный кабинет для покупки ${percentage}% доли`);
     setUserInvestment(percentage);
     setShowCalculator(false);
+    setShowCabinet(true);
     hapticFeedback('heavy');
+  };
+
+  const handleLoginToCabinet = () => {
+    hapticFeedback('medium');
+    setShowCabinet(true);
   };
 
   const totalProjectedRevenue = Object.values(SERVICE_REVENUE)
     .reduce((sum, service) => sum + service.totalRevenue, 0);
+
+  // Show personal cabinet
+  if (showCabinet) {
+    return (
+      <TelegramLayout>
+        <PersonalCabinet onBack={() => setShowCabinet(false)} />
+      </TelegramLayout>
+    );
+  }
 
   return (
     <TelegramLayout>
@@ -69,7 +85,7 @@ export const Dashboard = () => {
                 163,750 USD/год
               </div>
               <p className="text-sm text-gray-600">
-                Прогнозируемая доходность при покупке 1% за 10,000 TON
+                Прогнозируемая доходность при покупке 1% за 1,000 TON
               </p>
             </div>
             
@@ -79,28 +95,25 @@ export const Dashboard = () => {
                 <div className="text-xs text-gray-600">ROI в год</div>
               </div>
               <div className="text-center p-3 bg-white rounded-lg">
-                <div className="text-lg font-bold text-purple-600">0.01-20%</div>
+                <div className="text-lg font-bold text-purple-600">0.001-20%</div>
                 <div className="text-xs text-gray-600">Доступные доли</div>
               </div>
             </div>
 
             <div className="flex gap-2">
               <Button
-                onClick={() => setShowCalculator(true)}
+                onClick={handleLoginToCabinet}
                 className="flex-1 bg-green-600 hover:bg-green-700"
               >
                 💰 Купить долю
               </Button>
               <Button
                 variant="outline"
-                onClick={() => {
-                  // Scroll to services section
-                  document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
-                  hapticFeedback('light');
-                }}
-                className="flex-1"
+                onClick={handleLoginToCabinet}
+                className="flex items-center gap-2"
               >
-                📊 Подробнее
+                <User className="h-4 w-4" />
+                Кабинет
               </Button>
             </div>
           </CardContent>

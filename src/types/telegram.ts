@@ -88,6 +88,7 @@ declare global {
         requestWriteAccess(callback?: (access: boolean) => void): void;
         requestContact(callback?: (contact: boolean) => void): void;
         invokeCustomMethod(method: string, params: any, callback?: (error: string, result: any) => void): void;
+        openInvoice(url: string, callback?: (status: string) => void): void;
       };
     };
   }
@@ -107,4 +108,25 @@ export interface InvestmentData {
   tonAmount: number;
   usdAmount: number;
   projectedAnnualReturn: number;
+}
+
+export interface UserInvestment {
+  id: string;
+  userId: number;
+  percentage: number;
+  tonAmount: number;
+  usdAmount: number;
+  purchaseDate: Date;
+  transactionHash?: string;
+  status: 'pending' | 'completed' | 'failed';
+}
+
+export interface Dividend {
+  id: string;
+  userId: number;
+  amount: number;
+  currency: 'TON' | 'USDT';
+  date: Date;
+  status: 'pending' | 'paid';
+  transactionHash?: string;
 }
