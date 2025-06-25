@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTelegram } from '@/hooks/useTelegram';
-import { calculateInvestmentReturns, formatCurrency, COSMO_WALLET_ADDRESS } from '@/utils/investment';
+import { calculateInvestmentReturnsSync, formatCurrency, COSMO_WALLET_ADDRESS, getTonPrice } from '@/utils/investment';
 import { UserInvestment, Dividend } from '@/types/telegram';
 import { ArrowLeft, Wallet, TrendingUp, Download, Plus } from 'lucide-react';
 
@@ -13,11 +13,29 @@ interface PersonalCabinetProps {
 }
 
 export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
-  const [percentage, setPercentage] = useState(0.001);
+  const [percentage, setPercentage] = useState(0.01);
+  const [tonPrice, setTonPrice] = useState(2.5);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [investments, setInvestments] = useState<UserInvestment[]>([]);
   const [dividends, setDividends] = useState<Dividend[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user, tg, showAlert, hapticFeedback, notificationFeedback } = useTelegram();
+
+  // Fetch TON price on component mount
+  useEffect(() => {
+    const fetchTonPrice = async () => {
+      try {
+        const price = await getTonPrice();
+        setTonPrice(price);
+      } catch (error) {
+        console.log('Failed to fetch TON price, using fallback');
+      } finally {
+        setIsLoadingPrice(false);
+      }
+    };
+    
+    fetchTonPrice();
+  }, []);
 
   // Mock data for demonstration
   useEffect(() => {
@@ -28,7 +46,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         userId: user?.id || 0,
         percentage: 1,
         tonAmount: 1000,
-        usdAmount: 1000,
+        usdAmount: 1000 * tonPrice,
         purchaseDate: new Date('2024-01-15'),
         status: 'completed',
         transactionHash: 'abc123'
@@ -49,9 +67,9 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
 
     setInvestments(mockInvestments);
     setDividends(mockDividends);
-  }, [user?.id]);
+  }, [user?.id, tonPrice]);
 
-  const investment = calculateInvestmentReturns(percentage);
+  const investment = calculateInvestmentReturnsSync(percentage, tonPrice);
   const totalInvestment = investments.reduce((sum, inv) => sum + inv.percentage, 0);
   const totalDividends = dividends.reduce((sum, div) => sum + div.amount, 0);
 
@@ -61,8 +79,8 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
       return;
     }
 
-    if (percentage < 0.001 || percentage > 20) {
-      showAlert('Доля должна быть от 0.001% до 20%');
+    if (percentage < 0.01 || percentage > 20) {
+      showAlert('Доля должна быть от 0.01% до 20%');
       return;
     }
 
@@ -77,7 +95,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
       // Open TON payment in Telegram
       tg.openLink(paymentUrl);
       
-      showAlert(`Переход к оплате ${investment.tonAmount} TON за ${percentage}% доли в Cosmo Life`);
+      showAlert(`Переход к оплате ${investment.tonAmount} TON (${formatCurrency(investment.usdAmount)}) за ${percentage}% доли в Cosmo Life`);
       notificationFeedback('success');
       
       // In real app, you would track the transaction and update the database
@@ -126,6 +144,11 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
               <p className="text-blue-100 text-sm">
                 {user?.first_name} {user?.last_name}
               </p>
+              {!isLoadingPrice && (
+                <p className="text-blue-200 text-xs">
+                  Курс TON: ${tonPrice.toFixed(2)}
+                </p>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -166,6 +189,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-medium">{inv.tonAmount} TON</div>
+                    <div className="text-xs text-gray-500">{formatCurrency(inv.usdAmount)}</div>
                     <div className={`text-xs ${
                       inv.status === 'completed' ? 'text-green-600' : 
                       inv.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
@@ -192,16 +216,16 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         <CardContent className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Процент владения (от 0.001% до 20%):
+              Процент владения (от 0.01% до 20%):
             </label>
             <Input
               type="number"
               value={percentage}
               onChange={(e) => setPercentage(parseFloat(e.target.value) || 0)}
-              min={0.001}
+              min={0.01}
               max={20}
-              step={0.001}
-              placeholder="0.001"
+              step={0.01}
+              placeholder="0.01"
             />
           </div>
 
@@ -220,14 +244,21 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
                 {formatCurrency(investment.projectedAnnualReturn)}
               </span>
             </div>
+            {!isLoadingPrice && (
+              <div className="text-xs text-gray-600">
+                Курс TON: ${tonPrice.toFixed(2)}
+              </div>
+            )}
           </div>
 
           <Button
             onClick={handlePurchase}
-            disabled={isLoading || percentage < 0.001 || percentage > 20}
+            disabled={isLoading || isLoadingPrice || percentage < 0.01 || percentage > 20}
             className="w-full bg-green-600 hover:bg-green-700 font-bold py-3"
           >
-            {isLoading ? 'Обработка...' : `💰 Купить ${percentage}% за ${investment.tonAmount} TON`}
+            {isLoading ? 'Обработка...' : 
+             isLoadingPrice ? 'Загрузка курса...' :
+             `💰 Купить ${percentage}% за ${investment.tonAmount} TON`}
           </Button>
         </CardContent>
       </Card>

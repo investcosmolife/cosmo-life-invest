@@ -1,9 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { calculateInvestmentReturns, getInvestmentLimits, formatCurrency } from '@/utils/investment';
+import { calculateInvestmentReturnsSync, getInvestmentLimits, formatCurrency, getTonPrice } from '@/utils/investment';
 import { useTelegram } from '@/hooks/useTelegram';
 
 interface InvestmentCalculatorProps {
@@ -11,10 +11,28 @@ interface InvestmentCalculatorProps {
 }
 
 export const InvestmentCalculator = ({ onInvest }: InvestmentCalculatorProps) => {
-  const [percentage, setPercentage] = useState(1);
+  const [percentage, setPercentage] = useState(0.1);
+  const [tonPrice, setTonPrice] = useState(2.5);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const { hapticFeedback, notificationFeedback } = useTelegram();
   const limits = getInvestmentLimits();
-  const investment = calculateInvestmentReturns(percentage);
+  
+  useEffect(() => {
+    const fetchTonPrice = async () => {
+      try {
+        const price = await getTonPrice();
+        setTonPrice(price);
+      } catch (error) {
+        console.log('Failed to fetch TON price, using fallback');
+      } finally {
+        setIsLoadingPrice(false);
+      }
+    };
+    
+    fetchTonPrice();
+  }, []);
+  
+  const investment = calculateInvestmentReturnsSync(percentage, tonPrice);
 
   const handlePercentageChange = (value: string) => {
     const num = parseFloat(value);
@@ -41,6 +59,9 @@ export const InvestmentCalculator = ({ onInvest }: InvestmentCalculatorProps) =>
         <CardTitle className="text-center text-xl">
           💰 Калькулятор инвестиций
         </CardTitle>
+        <div className="text-center text-sm text-purple-100">
+          {isLoadingPrice ? 'Загрузка курса TON...' : `1 TON = $${tonPrice.toFixed(2)}`}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -117,6 +138,7 @@ export const InvestmentCalculator = ({ onInvest }: InvestmentCalculatorProps) =>
 
         <Button
           onClick={handleInvest}
+          disabled={isLoadingPrice}
           className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 text-lg"
         >
           🚀 Купить долю {percentage}%

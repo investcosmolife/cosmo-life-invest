@@ -1,4 +1,3 @@
-
 // Telegram Web App types
 declare global {
   interface Window {
@@ -108,6 +107,7 @@ export interface InvestmentData {
   tonAmount: number;
   usdAmount: number;
   projectedAnnualReturn: number;
+  tonPrice?: number;
 }
 
 export interface UserInvestment {
