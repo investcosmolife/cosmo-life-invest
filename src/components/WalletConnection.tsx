@@ -83,8 +83,8 @@ export const WalletConnection = ({ onConnect }: WalletConnectionProps) => {
             <p>3. Подключите или создайте кошелек</p>
             <p>4. Вернитесь в это приложение</p>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
