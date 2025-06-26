@@ -1,8 +1,6 @@
 
 import { Dashboard } from './Dashboard';
 
-const Index = () => {
+export default function Index() {
   return <Dashboard />;
-};
-
-export default Index;
+}

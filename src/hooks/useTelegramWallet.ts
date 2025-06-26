@@ -11,7 +11,7 @@ interface TelegramWallet {
 export const useTelegramWallet = () => {
   const [wallet, setWallet] = useState<TelegramWallet>({ isConnected: false });
   const [isLoading, setIsLoading] = useState(true);
-  const { tg, showAlert } = useTelegram();
+  const { tg, showAlert, isTelegramEnvironment } = useTelegram();
 
   useEffect(() => {
     checkWalletConnection();
@@ -21,35 +21,16 @@ export const useTelegramWallet = () => {
     setIsLoading(true);
     
     try {
-      // Проверяем наличие Telegram WebApp
-      const telegramApp = window.Telegram?.WebApp;
-      
-      if (telegramApp && telegramApp.initData) {
-        // Реальная проверка кошелька через Telegram API
-        if (telegramApp.initDataUnsafe?.user) {
-          // Пытаемся получить информацию о кошельке
-          try {
-            // Используем стандартный метод проверки кошелька в Telegram
-            const walletData = localStorage.getItem('telegram_wallet_data');
-            if (walletData) {
-              const parsed = JSON.parse(walletData);
-              setWallet({
-                isConnected: true,
-                address: parsed.address,
-                balance: parsed.balance || 0
-              });
-            } else {
-              setWallet({ isConnected: false });
-            }
-          } catch (error) {
-            console.log('Wallet check error:', error);
-            setWallet({ isConnected: false });
-          }
-        } else {
-          setWallet({ isConnected: false });
-        }
+      // Проверяем сохраненные данные кошелька
+      const walletData = localStorage.getItem('telegram_wallet_data');
+      if (walletData) {
+        const parsed = JSON.parse(walletData);
+        setWallet({
+          isConnected: true,
+          address: parsed.address,
+          balance: parsed.balance || 0
+        });
       } else {
-        // Для разработки вне Telegram
         setWallet({ isConnected: false });
       }
     } catch (error) {
@@ -61,28 +42,39 @@ export const useTelegramWallet = () => {
   };
 
   const connectWallet = async (): Promise<boolean> => {
-    const telegramApp = window.Telegram?.WebApp;
-    
-    // Проверяем, что мы в Telegram
-    if (!telegramApp || !telegramApp.initData) {
-      showAlert('Это приложение работает только в Telegram');
-      return false;
+    // Проверяем Telegram окружение более мягко
+    if (!isTelegramEnvironment) {
+      // В режиме разработки имитируем подключение
+      console.log('Development mode - simulating wallet connection');
+      const mockWalletData = {
+        address: 'UQD...' + Math.random().toString(36).substring(2, 15),
+        balance: Math.random() * 100
+      };
+      localStorage.setItem('telegram_wallet_data', JSON.stringify(mockWalletData));
+      setWallet({
+        isConnected: true,
+        address: mockWalletData.address,
+        balance: mockWalletData.balance
+      });
+      showAlert('Кошелек успешно подключен!');
+      return true;
     }
 
     try {
-      // Открываем @wallet через Telegram API
-      if (telegramApp.openTelegramLink) {
-        telegramApp.openTelegramLink('https://t.me/wallet');
-      } else if (telegramApp.openLink) {
-        telegramApp.openLink('https://t.me/wallet');
+      // Открываем @wallet через различные методы
+      const walletUrl = 'https://t.me/wallet';
+      
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(walletUrl);
+      } else if (tg?.openLink) {
+        tg.openLink(walletUrl);
       } else {
-        // Fallback для старых версий
-        window.open('https://t.me/wallet', '_blank');
+        window.open(walletUrl, '_blank');
       }
       
       showAlert('Откройте @wallet в Telegram, подключите кошелек и вернитесь в приложение');
       
-      // Имитируем подключение кошелька для демонстрации
+      // Имитируем подключение через 3 секунды
       setTimeout(() => {
         const mockWalletData = {
           address: 'UQD...' + Math.random().toString(36).substring(2, 15),
@@ -106,9 +98,7 @@ export const useTelegramWallet = () => {
   };
 
   const sendPayment = async (amount: number, toAddress: string, comment: string): Promise<boolean> => {
-    const telegramApp = window.Telegram?.WebApp;
-    
-    if (!wallet.isConnected || !telegramApp) {
+    if (!wallet.isConnected) {
       showAlert('Кошелек не подключен');
       return false;
     }
@@ -122,14 +112,12 @@ export const useTelegramWallet = () => {
         comment
       });
 
-      // Формируем URL для платежа
       const paymentUrl = `ton://transfer/${toAddress}?amount=${nanoAmount}&text=${encodeURIComponent(comment)}`;
       
-      // Открываем кошелек для платежа
-      if (telegramApp.openTelegramLink) {
-        telegramApp.openTelegramLink(paymentUrl);
-      } else if (telegramApp.openLink) {
-        telegramApp.openLink(paymentUrl);
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(paymentUrl);
+      } else if (tg?.openLink) {
+        tg.openLink(paymentUrl);
       } else {
         window.open(paymentUrl, '_blank');
       }
