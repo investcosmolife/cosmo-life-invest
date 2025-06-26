@@ -10,7 +10,7 @@ import { TelegramLayout } from '@/components/TelegramLayout';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 import { SERVICE_REVENUE, formatCurrency } from '@/utils/investment';
-import { ArrowUp, TrendingUp, Users, DollarSign, User, Wallet } from 'lucide-react';
+import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
 
 export const Dashboard = () => {
   const [showCalculator, setShowCalculator] = useState(false);
@@ -50,7 +50,7 @@ export const Dashboard = () => {
   const totalProjectedRevenue = Object.values(SERVICE_REVENUE)
     .reduce((sum, service) => sum + service.totalRevenue, 0);
 
-  // Show wallet connection screen
+  // Показываем экран подключения кошелька
   if (showWalletConnection) {
     return (
       <TelegramLayout>
@@ -77,7 +77,7 @@ export const Dashboard = () => {
     );
   }
 
-  // Show personal cabinet only if wallet is connected
+  // Показываем личный кабинет только если кошелек подключен
   if (showCabinet && wallet.isConnected) {
     return (
       <TelegramLayout>
@@ -86,7 +86,7 @@ export const Dashboard = () => {
     );
   }
 
-  // If trying to show cabinet but wallet not connected, redirect to wallet connection
+  // Если пытаемся показать кабинет без подключенного кошелька
   if (showCabinet && !wallet.isConnected) {
     setShowCabinet(false);
     setShowWalletConnection(true);
@@ -95,7 +95,6 @@ export const Dashboard = () => {
   return (
     <TelegramLayout>
       <div className="space-y-4">
-        {/* Header */}
         <Card className="bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0">
           <CardHeader className="text-center pb-2">
             <div className="text-3xl mb-2">🌟</div>
@@ -132,7 +131,6 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Investment Opportunity */}
         <Card className="border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
@@ -180,7 +178,6 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Services Overview */}
         <div id="services">
           <h2 className="text-xl font-bold mb-4 text-center">
             🚀 Наши сервисы
@@ -190,12 +187,11 @@ export const Dashboard = () => {
             <ServiceCard
               key={key}
               serviceKey={key as keyof typeof SERVICE_REVENUE}
-              userPercentage={1} // Показываем прогноз для 1%
+              userPercentage={1}
             />
           ))}
         </div>
 
-        {/* About Section */}
         <Card>
           <CardHeader>
             <CardTitle className="text-center">🤖 О Cosmo Life</CardTitle>
@@ -237,7 +233,6 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Investment Calculator Modal-like Card */}
         {showCalculator && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="w-full max-w-md">

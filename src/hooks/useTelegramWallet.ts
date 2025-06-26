@@ -27,25 +27,34 @@ export const useTelegramWallet = () => {
     }
 
     try {
-      // Проверяем, доступен ли кошелек в Telegram
-      if (typeof tg.invokeCustomMethod === 'function') {
-        tg.invokeCustomMethod('web_app_request_wallet_info', {}, (error: string, result: any) => {
-          if (error) {
-            console.log('Wallet not connected:', error);
-            setWallet({ isConnected: false });
-          } else if (result && result.address) {
-            setWallet({
-              isConnected: true,
-              address: result.address,
-              balance: result.balance || 0
+      // Проверяем подключение кошелька через Telegram WebApp API
+      if (tg.initDataUnsafe?.user) {
+        // Используем реальный API проверки кошелька
+        const checkWallet = () => {
+          try {
+            // Запрашиваем информацию о кошельке
+            tg.invokeCustomMethod?.('web_app_request_wallet', {}, (error: any, result: any) => {
+              if (!error && result) {
+                setWallet({
+                  isConnected: true,
+                  address: result.address,
+                  balance: result.balance || 0
+                });
+              } else {
+                setWallet({ isConnected: false });
+              }
+              setIsLoading(false);
             });
-          } else {
+          } catch (err) {
+            console.log('Wallet check error:', err);
             setWallet({ isConnected: false });
+            setIsLoading(false);
           }
-          setIsLoading(false);
-        });
+        };
+
+        // Проверяем кошелек
+        checkWallet();
       } else {
-        // Для старых версий Telegram пробуем другой метод
         setWallet({ isConnected: false });
         setIsLoading(false);
       }
@@ -56,86 +65,65 @@ export const useTelegramWallet = () => {
     }
   };
 
-  const connectWallet = async () => {
+  const connectWallet = async (): Promise<boolean> => {
     if (!tg) {
       showAlert('Это приложение работает только в Telegram');
       return false;
     }
 
     try {
-      // Пробуем подключить кошелек через Telegram
-      if (typeof tg.invokeCustomMethod === 'function') {
-        return new Promise<boolean>((resolve) => {
-          tg.invokeCustomMethod('web_app_open_tg_link', { 
-            url: 'https://t.me/wallet' 
-          }, (error: string, result: any) => {
-            if (error) {
-              showAlert('Не удалось открыть кошелек Telegram. Убедитесь, что у вас установлен @wallet');
-              resolve(false);
-            } else {
-              showAlert('Откройте @wallet в Telegram, подключите кошелек и вернитесь в приложение');
-              // Проверяем подключение через 3 секунды
-              setTimeout(() => {
-                checkWalletConnection();
-              }, 3000);
-              resolve(true);
-            }
-          });
-        });
-      } else {
-        // Fallback: открываем ссылку на кошелек
-        tg.openTelegramLink('https://t.me/wallet');
-        showAlert('Откройте @wallet в Telegram, подключите кошелек и вернитесь в приложение');
-        return false;
-      }
+      // Открываем @wallet бота для подключения
+      tg.openTelegramLink('https://t.me/wallet');
+      showAlert('Откройте @wallet в Telegram, подключите кошелек и вернитесь в приложение');
+      
+      // Через 5 секунд проверяем подключение
+      setTimeout(() => {
+        checkWalletConnection();
+      }, 5000);
+      
+      return true;
     } catch (error) {
-      showAlert('Ошибка подключения кошелька. Убедитесь, что вы используете последнюю версию Telegram');
+      console.error('Connect wallet error:', error);
+      showAlert('Ошибка подключения кошелька');
       return false;
     }
   };
 
-  const sendPayment = async (amount: number, toAddress: string, comment: string) => {
+  const sendPayment = async (amount: number, toAddress: string, comment: string): Promise<boolean> => {
     if (!wallet.isConnected || !tg) {
       showAlert('Кошелек не подключен');
       return false;
     }
 
     try {
-      // Создаем TON платеж через Telegram кошелек
-      const nanoAmount = Math.floor(amount * 1000000000); // Конвертируем в нанотоны
+      const nanoAmount = Math.floor(amount * 1000000000);
       
-      console.log('Sending payment:', {
+      console.log('Отправка платежа:', {
         amount: nanoAmount,
         toAddress,
         comment
       });
+
+      // Отправляем платеж через Telegram Wallet
+      const paymentUrl = `ton://transfer/${toAddress}?amount=${nanoAmount}&text=${encodeURIComponent(comment)}`;
       
-      // Используем Telegram кошелек для отправки платежа
-      if (typeof tg.invokeCustomMethod === 'function') {
-        return new Promise<boolean>((resolve) => {
-          tg.invokeCustomMethod('web_app_send_transaction', {
-            to: toAddress,
-            value: nanoAmount.toString(),
-            data: comment
-          }, (error: string, result: any) => {
-            if (error) {
-              showAlert('Ошибка при отправке платежа: ' + error);
-              resolve(false);
-            } else {
-              showAlert('Платеж отправлен успешно!');
-              resolve(true);
-            }
-          });
+      if (tg.openInvoice) {
+        tg.openInvoice(paymentUrl, (status: string) => {
+          if (status === 'paid') {
+            showAlert('Платеж успешно отправлен!');
+          } else {
+            showAlert('Платеж отменен или не выполнен');
+          }
         });
       } else {
-        // Fallback: создаем TON ссылку для платежа
-        const paymentUrl = `ton://transfer/${toAddress}?amount=${nanoAmount}&text=${encodeURIComponent(comment)}`;
         tg.openLink(paymentUrl);
-        return true;
+        showAlert('Откроется кошелек для подтверждения платежа');
       }
+      
+      return true;
     } catch (error) {
       console.error('Payment error:', error);
-      showAlert('Ошибка при создании платежа');
+      showAlert('Ошибка при отправке платежа');
       return false;
     }
   };

@@ -20,7 +20,6 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
   const { user, showAlert, hapticFeedback, notificationFeedback } = useTelegram();
   const { wallet, sendPayment } = useTelegramWallet();
 
-  // Загружаем курс TON при монтировании компонента
   useEffect(() => {
     const fetchTonPrice = async () => {
       try {
@@ -38,9 +37,10 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
 
   const investment = calculateInvestmentReturnsSync(percentage, tonPrice);
 
-  // Реальные данные - пока нулевые, так как нет покупок
-  const totalInvestment = 0; // Реальная сумма инвестиций пользователя
-  const totalDividends = 0; // Реальная сумма дивидендов
+  // Реальные данные пользователя - пока нулевые
+  const userShares = 0; // Реальная доля пользователя
+  const userInvestment = 0; // Реальная сумма инвестиций
+  const userDividends = 0; // Реальная сумма дивидендов
 
   const handlePurchase = async () => {
     if (!wallet.isConnected) {
@@ -60,18 +60,12 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
       const amount = investment.tonAmount;
       const comment = `CosmoLife_${percentage}%_${user?.id || 'user'}`;
       
-      console.log('Sending payment:', {
-        amount,
-        toAddress: COSMO_WALLET_ADDRESS,
-        comment
-      });
-      
       const success = await sendPayment(amount, COSMO_WALLET_ADDRESS, comment);
       
       if (success) {
-        showAlert(`Платеж на сумму ${investment.tonAmount} TON отправлен. После подтверждения транзакции доля будет добавлена в ваш портфель.`);
+        showAlert(`Платеж на сумму ${investment.tonAmount} TON будет отправлен. После подтверждения транзакции доля будет добавлена в ваш портфель.`);
         notificationFeedback('success');
-        setPercentage(0.01); // Сбрасываем форму
+        setPercentage(0.01);
       }
       
     } catch (error) {
@@ -85,7 +79,6 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Header with wallet info */}
       <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-3">
@@ -118,7 +111,6 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         </CardHeader>
       </Card>
 
-      {/* Current Holdings - показываем реальные данные */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -129,14 +121,14 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         <CardContent>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-600">{totalInvestment}%</div>
-              <div className="text-sm text-gray-600">Общая доля</div>
+              <div className="text-2xl font-bold text-gray-600">{userShares}%</div>
+              <div className="text-sm text-gray-600">Моя доля</div>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <div className="text-lg font-bold text-gray-600">
-                {formatCurrency(totalInvestment * 163750 / 100)}
+                {formatCurrency(userInvestment)}
               </div>
-              <div className="text-sm text-gray-600">Прогноз/год</div>
+              <div className="text-sm text-gray-600">Инвестировано</div>
             </div>
           </div>
 
@@ -146,7 +138,6 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         </CardContent>
       </Card>
 
-      {/* Buy Shares */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -215,7 +206,6 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         </CardContent>
       </Card>
 
-      {/* Dividends - показываем реальные данные */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -226,9 +216,9 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
         <CardContent>
           <div className="text-center p-3 bg-gray-50 rounded-lg mb-4">
             <div className="text-2xl font-bold text-gray-600">
-              {formatCurrency(totalDividends)}
+              {formatCurrency(userDividends)}
             </div>
-            <div className="text-sm text-gray-600">Общая сумма дивидендов</div>
+            <div className="text-sm text-gray-600">Полученные дивиденды</div>
           </div>
 
           <div className="text-center text-gray-500 text-sm py-4">
@@ -238,7 +228,7 @@ export const PersonalCabinet = ({ onBack }: PersonalCabinetProps) => {
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-800">
               💡 Дивиденды выплачиваются ежемесячно на основе фактической прибыли проекта. 
-              Вы можете выбрать валюту для получения: TON или USDT в сети TON.
+              Вы можете получать их в TON или USDT.
             </p>
           </div>
         </CardContent>
