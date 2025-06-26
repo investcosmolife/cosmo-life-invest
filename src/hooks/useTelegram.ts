@@ -9,7 +9,7 @@ export const useTelegram = () => {
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     
-    if (tg) {
+    if (tg && tg.initData) {
       tg.ready();
       tg.expand();
       
@@ -20,22 +20,32 @@ export const useTelegram = () => {
       
       setIsLoading(false);
     } else {
-      // For development/testing outside Telegram
-      setUser({
-        id: 123456789,
-        is_bot: false,
-        first_name: 'Test',
-        last_name: 'User',
-        username: 'testuser',
-        language_code: 'ru'
-      });
-      setIsLoading(false);
+      // Проверяем, есть ли хотя бы объект Telegram
+      if (window.Telegram) {
+        // Возможно, приложение еще не полностью инициализировано
+        setTimeout(() => {
+          const tg = window.Telegram?.WebApp;
+          if (tg) {
+            tg.ready();
+            tg.expand();
+            const userData = tg.initDataUnsafe?.user;
+            if (userData) {
+              setUser(userData);
+            }
+          }
+          setIsLoading(false);
+        }, 1000);
+      } else {
+        // Полностью вне Telegram - только для разработки
+        console.log('Running outside Telegram environment');
+        setIsLoading(false);
+      }
     }
   }, []);
 
   const showAlert = (message: string) => {
     const tg = window.Telegram?.WebApp;
-    if (tg) {
+    if (tg && tg.showAlert) {
       tg.showAlert(message);
     } else {
       alert(message);
@@ -44,7 +54,7 @@ export const useTelegram = () => {
 
   const showConfirm = (message: string, callback: (confirmed: boolean) => void) => {
     const tg = window.Telegram?.WebApp;
-    if (tg) {
+    if (tg && tg.showConfirm) {
       tg.showConfirm(message, callback);
     } else {
       const confirmed = confirm(message);
@@ -54,14 +64,14 @@ export const useTelegram = () => {
 
   const hapticFeedback = (type: 'light' | 'medium' | 'heavy' = 'medium') => {
     const tg = window.Telegram?.WebApp;
-    if (tg) {
+    if (tg && tg.HapticFeedback) {
       tg.HapticFeedback.impactOccurred(type);
     }
   };
 
   const notificationFeedback = (type: 'error' | 'success' | 'warning') => {
     const tg = window.Telegram?.WebApp;
-    if (tg) {
+    if (tg && tg.HapticFeedback) {
       tg.HapticFeedback.notificationOccurred(type);
     }
   };
