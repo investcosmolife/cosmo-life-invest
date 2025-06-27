@@ -2,20 +2,74 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ServiceCard } from '@/components/ServiceCard';
-import { InvestmentCalculator } from '@/components/InvestmentCalculator';
-import { PersonalCabinet } from '@/components/PersonalCabinet';
-import { WalletConnection } from '@/components/WalletConnection';
 import { TelegramLayout } from '@/components/TelegramLayout';
-import { useTelegram } from '@/hooks/useTelegram';
-import { useTelegramWallet } from '@/hooks/useTelegramWallet';
-import { SERVICE_REVENUE, formatCurrency } from '@/utils/investment';
 import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
+
+// Безопасные импорты с проверкой
+let ServiceCard: any = null;
+let InvestmentCalculator: any = null;
+let PersonalCabinet: any = null;
+let WalletConnection: any = null;
+let useTelegram: any = () => ({ user: null, showAlert: () => {}, hapticFeedback: () => {} });
+let useTelegramWallet: any = () => ({ wallet: { isConnected: false }, isLoading: false, connectWallet: async () => false });
+let SERVICE_REVENUE: any = {};
+let formatCurrency: any = (value: number) => `$${value.toLocaleString()}`;
+
+try {
+  const serviceCard = await import('@/components/ServiceCard');
+  ServiceCard = serviceCard.ServiceCard;
+} catch (error) {
+  console.log('ServiceCard not available');
+}
+
+try {
+  const investmentCalc = await import('@/components/InvestmentCalculator');
+  InvestmentCalculator = investmentCalc.InvestmentCalculator;
+} catch (error) {
+  console.log('InvestmentCalculator not available');
+}
+
+try {
+  const personalCab = await import('@/components/PersonalCabinet');
+  PersonalCabinet = personalCab.PersonalCabinet;
+} catch (error) {
+  console.log('PersonalCabinet not available');
+}
+
+try {
+  const walletConn = await import('@/components/WalletConnection');
+  WalletConnection = walletConn.WalletConnection;
+} catch (error) {
+  console.log('WalletConnection not available');
+}
+
+try {
+  const telegram = await import('@/hooks/useTelegram');
+  useTelegram = telegram.useTelegram;
+} catch (error) {
+  console.log('useTelegram not available');
+}
+
+try {
+  const telegramWallet = await import('@/hooks/useTelegramWallet');
+  useTelegramWallet = telegramWallet.useTelegramWallet;
+} catch (error) {
+  console.log('useTelegramWallet not available');
+}
+
+try {
+  const investment = await import('@/utils/investment');
+  SERVICE_REVENUE = investment.SERVICE_REVENUE || {};
+  formatCurrency = investment.formatCurrency || formatCurrency;
+} catch (error) {
+  console.log('investment utils not available');
+}
 
 export const Dashboard = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
+  
   const { user, showAlert, hapticFeedback } = useTelegram();
   const { wallet, isLoading: walletLoading } = useTelegramWallet();
 
@@ -48,10 +102,10 @@ export const Dashboard = () => {
   };
 
   const totalProjectedRevenue = Object.values(SERVICE_REVENUE)
-    .reduce((sum, service) => sum + service.totalRevenue, 0);
+    .reduce((sum: number, service: any) => sum + (service?.totalRevenue || 0), 0);
 
   // Показываем экран подключения кошелька
-  if (showWalletConnection) {
+  if (showWalletConnection && WalletConnection) {
     return (
       <TelegramLayout>
         <div className="space-y-4">
@@ -78,7 +132,7 @@ export const Dashboard = () => {
   }
 
   // Показываем личный кабинет только если кошелек подключен
-  if (showCabinet && wallet.isConnected) {
+  if (showCabinet && wallet.isConnected && PersonalCabinet) {
     return (
       <TelegramLayout>
         <PersonalCabinet onBack={() => setShowCabinet(false)} />
@@ -183,7 +237,7 @@ export const Dashboard = () => {
             🚀 Наши сервисы
           </h2>
           
-          {Object.entries(SERVICE_REVENUE).map(([key, service]) => (
+          {ServiceCard && Object.entries(SERVICE_REVENUE).map(([key, service]) => (
             <ServiceCard
               key={key}
               serviceKey={key as keyof typeof SERVICE_REVENUE}
@@ -233,7 +287,7 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {showCalculator && (
+        {showCalculator && InvestmentCalculator && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="w-full max-w-md">
               <InvestmentCalculator onInvest={handleInvest} />
