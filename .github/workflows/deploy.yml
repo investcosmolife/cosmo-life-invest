@@ -38,6 +38,13 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          
+      - name: List build output
+        run: |
+          echo "Build directory contents:"
+          ls -la dist/
+          echo "Index.html contents:"
+          cat dist/index.html
         
       - name: Setup Pages
         uses: actions/configure-pages@v4
