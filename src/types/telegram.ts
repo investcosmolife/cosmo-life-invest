@@ -1,3 +1,4 @@
+
 // Telegram Web App types
 declare global {
   interface Window {
@@ -35,6 +36,10 @@ declare global {
             language_code?: string;
           };
           start_param?: string;
+          wallet?: {
+            address: string;
+            balance?: number;
+          };
         };
         version: string;
         platform: string;
@@ -88,6 +93,8 @@ declare global {
         requestContact(callback?: (contact: boolean) => void): void;
         invokeCustomMethod(method: string, params: any, callback?: (error: string, result: any) => void): void;
         openInvoice(url: string, callback?: (status: string) => void): void;
+        requestWallet?(callback?: (wallet: { address: string; balance?: number } | null) => void): void;
+        sendTransaction?(params: { to: string; value: string; data?: string }): Promise<{ success: boolean; hash?: string }>;
       };
     };
   }

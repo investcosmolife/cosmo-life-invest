@@ -11,7 +11,7 @@ interface TelegramWallet {
 export const useTelegramWallet = () => {
   const [wallet, setWallet] = useState<TelegramWallet>({ isConnected: false });
   const [isLoading, setIsLoading] = useState(true);
-  const { tg, showAlert } = useTelegram();
+  const { tg, showAlert, isTelegramEnvironment } = useTelegram();
 
   useEffect(() => {
     checkWalletConnection();
@@ -21,36 +21,55 @@ export const useTelegramWallet = () => {
     setIsLoading(true);
     
     try {
-      // Проверяем только реальные данные кошелька из Telegram Web App
+      // Check if we're in Telegram environment first
+      if (!isTelegramEnvironment) {
+        setWallet({ isConnected: false });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if wallet data exists in initDataUnsafe (only if it exists)
       if (tg && tg.initDataUnsafe && tg.initDataUnsafe.wallet) {
         const walletData = tg.initDataUnsafe.wallet;
-        setWallet({
-          isConnected: true,
-          address: walletData.address,
-          balance: walletData.balance || 0
-        });
-      } else {
-        // Проверяем сохраненные данные только если они содержат реальный адрес
-        const walletData = localStorage.getItem('telegram_wallet_data');
-        if (walletData) {
-          const parsed = JSON.parse(walletData);
-          // Проверяем что это не фейковый адрес (начинается с реального TON адреса)
-          if (parsed.address && (parsed.address.startsWith('EQ') || parsed.address.startsWith('UQ')) && parsed.address.length > 40) {
+        if (walletData.address && walletData.address.length > 40) {
+          setWallet({
+            isConnected: true,
+            address: walletData.address,
+            balance: walletData.balance || 0
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Check localStorage for saved wallet data (only real data)
+      const savedWalletData = localStorage.getItem('telegram_wallet_data');
+      if (savedWalletData) {
+        try {
+          const parsed = JSON.parse(savedWalletData);
+          // Only accept if it looks like a real TON address
+          if (parsed.address && 
+              (parsed.address.startsWith('EQ') || parsed.address.startsWith('UQ')) && 
+              parsed.address.length > 40) {
             setWallet({
               isConnected: true,
               address: parsed.address,
               balance: parsed.balance || 0
             });
           } else {
+            // Remove invalid data
             localStorage.removeItem('telegram_wallet_data');
             setWallet({ isConnected: false });
           }
-        } else {
+        } catch {
+          localStorage.removeItem('telegram_wallet_data');
           setWallet({ isConnected: false });
         }
+      } else {
+        setWallet({ isConnected: false });
       }
     } catch (error) {
-      console.log('Error checking wallet:', error);
+      console.error('Error checking wallet:', error);
       setWallet({ isConnected: false });
     } finally {
       setIsLoading(false);
@@ -58,60 +77,53 @@ export const useTelegramWallet = () => {
   };
 
   const connectWallet = async (): Promise<boolean> => {
-    if (!tg) {
+    if (!isTelegramEnvironment) {
       showAlert('Это приложение работает только в Telegram');
       return false;
     }
 
+    if (!tg) {
+      showAlert('Telegram WebApp недоступен');
+      return false;
+    }
+
     try {
-      // Используем только реальный Telegram Wallet API
+      // Try to use requestWallet if available (optional method)
       if (tg.requestWallet) {
-        // Новый API для подключения кошелька
-        const walletResult = await tg.requestWallet();
-        if (walletResult && walletResult.address) {
-          const walletData = {
-            address: walletResult.address,
-            balance: walletResult.balance || 0
-          };
-          localStorage.setItem('telegram_wallet_data', JSON.stringify(walletData));
-          setWallet({
-            isConnected: true,
-            address: walletData.address,
-            balance: walletData.balance
-          });
-          showAlert('Кошелек успешно подключен!');
-          return true;
-        }
-      } else if (tg.openTelegramLink) {
-        // Открываем @wallet для подключения
-        tg.openTelegramLink('https://t.me/wallet/start?startapp=connect');
-        showAlert('Откройте @wallet в Telegram и подключите кошелек, затем вернитесь в приложение');
-        
-        // Ожидаем подключения кошелька через события
         return new Promise((resolve) => {
-          const checkConnection = setInterval(() => {
-            if (tg.initDataUnsafe && tg.initDataUnsafe.wallet) {
-              clearInterval(checkConnection);
-              checkWalletConnection();
+          tg.requestWallet!((walletData) => {
+            if (walletData && walletData.address) {
+              const savedData = {
+                address: walletData.address,
+                balance: walletData.balance || 0
+              };
+              localStorage.setItem('telegram_wallet_data', JSON.stringify(savedData));
+              setWallet({
+                isConnected: true,
+                address: savedData.address,
+                balance: savedData.balance
+              });
+              showAlert('Кошелек успешно подключен!');
               resolve(true);
+            } else {
+              showAlert('Не удалось подключить кошелек');
+              resolve(false);
             }
-          }, 1000);
-          
-          // Таймаут через 30 секунд
-          setTimeout(() => {
-            clearInterval(checkConnection);
-            resolve(false);
-          }, 30000);
+          });
         });
       } else {
-        showAlert('Функция подключения кошелька недоступна в данной версии Telegram');
+        // Fallback - redirect to @wallet
+        if (tg.openTelegramLink) {
+          tg.openTelegramLink('https://t.me/wallet');
+          showAlert('Установите @wallet и настройте кошелек, затем перезапустите приложение');
+        } else {
+          showAlert('Функция подключения кошелька недоступна в данной версии Telegram. Установите @wallet и настройте кошелек.');
+        }
         return false;
       }
-      
-      return false;
     } catch (error) {
       console.error('Connect wallet error:', error);
-      showAlert('Ошибка подключения кошелька. Убедитесь, что у вас установлен @wallet в Telegram');
+      showAlert('Ошибка подключения кошелька. Убедитесь, что у вас установлен @wallet');
       return false;
     }
   };
@@ -122,7 +134,7 @@ export const useTelegramWallet = () => {
       return false;
     }
 
-    if (!tg) {
+    if (!isTelegramEnvironment || !tg) {
       showAlert('Это приложение работает только в Telegram');
       return false;
     }
@@ -136,7 +148,7 @@ export const useTelegramWallet = () => {
         comment
       });
 
-      // Используем Telegram Web App API для отправки платежа
+      // Try to use sendTransaction if available (optional method)
       if (tg.sendTransaction) {
         const transaction = {
           to: toAddress,
@@ -153,17 +165,17 @@ export const useTelegramWallet = () => {
           return false;
         }
       } else {
-        // Fallback - открываем кошелек с параметрами транзакции
+        // Fallback - create payment URL
         const paymentUrl = `ton://transfer/${toAddress}?amount=${nanoAmount}&text=${encodeURIComponent(comment)}`;
         
-        if (tg.openTelegramLink) {
-          tg.openTelegramLink(paymentUrl);
-        } else if (tg.openLink) {
+        if (tg.openLink) {
           tg.openLink(paymentUrl);
+          showAlert('Откроется внешний кошелек для подтверждения платежа');
+          return true;
+        } else {
+          showAlert('Функция отправки платежей недоступна');
+          return false;
         }
-        
-        showAlert('Откроется кошелек для подтверждения платежа');
-        return true;
       }
       
     } catch (error) {
