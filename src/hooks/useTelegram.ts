@@ -7,95 +7,111 @@ export const useTelegram = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Проверяем различные способы определения Telegram окружения
-    const checkTelegramEnvironment = () => {
-      // Проверка 1: window.Telegram
-      if (window.Telegram?.WebApp) {
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-        
-        const userData = tg.initDataUnsafe?.user;
-        if (userData) {
-          setUser(userData);
+    const initializeTelegram = () => {
+      try {
+        // Проверяем наличие Telegram WebApp
+        if (window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp;
+          console.log('Telegram WebApp detected');
+          
+          // Инициализируем WebApp
+          tg.ready();
+          tg.expand();
+          
+          // Получаем данные пользователя
+          const userData = tg.initDataUnsafe?.user;
+          if (userData) {
+            console.log('User data found:', userData);
+            setUser(userData);
+          } else {
+            console.log('No user data in initDataUnsafe');
+          }
+          
+          setIsLoading(false);
+          return;
         }
-        setIsLoading(false);
-        return true;
-      }
 
-      // Проверка 2: User-Agent содержит Telegram
-      if (navigator.userAgent.includes('Telegram')) {
-        console.log('Detected Telegram via User-Agent');
-        setIsLoading(false);
-        return true;
-      }
+        // Проверяем другие признаки Telegram среды
+        const isTelegramUA = navigator.userAgent.includes('Telegram');
+        const hasTelemgramParams = window.location.search.includes('tgWebApp');
+        const isTelegramReferrer = document.referrer.includes('t.me');
 
-      // Проверка 3: URL параметры от Telegram
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppVersion')) {
-        console.log('Detected Telegram via URL params');
+        if (isTelegramUA || hasTelemgramParams || isTelegramReferrer) {
+          console.log('Telegram environment detected via alternative method');
+        } else {
+          console.log('Running in development/web mode');
+        }
+        
         setIsLoading(false);
-        return true;
-      }
-
-      // Проверка 4: Referrer содержит t.me
-      if (document.referrer && document.referrer.includes('t.me')) {
-        console.log('Detected Telegram via referrer');
+      } catch (error) {
+        console.error('Error initializing Telegram:', error);
         setIsLoading(false);
-        return true;
       }
-
-      return false;
     };
 
-    const isTelegram = checkTelegramEnvironment();
+    // Небольшая задержка для инициализации Telegram
+    const timeout = setTimeout(initializeTelegram, 100);
     
-    if (!isTelegram) {
-      // Для разработки - имитируем Telegram окружение
-      console.log('Development mode - simulating Telegram environment');
-      setIsLoading(false);
-    }
+    return () => clearTimeout(timeout);
   }, []);
 
   const showAlert = (message: string) => {
-    const tg = window.Telegram?.WebApp;
-    if (tg && tg.showAlert) {
-      tg.showAlert(message);
-    } else {
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg && tg.showAlert) {
+        tg.showAlert(message);
+      } else {
+        alert(message);
+      }
+    } catch (error) {
+      console.error('Error showing alert:', error);
       alert(message);
     }
   };
 
   const showConfirm = (message: string, callback: (confirmed: boolean) => void) => {
-    const tg = window.Telegram?.WebApp;
-    if (tg && tg.showConfirm) {
-      tg.showConfirm(message, callback);
-    } else {
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg && tg.showConfirm) {
+        tg.showConfirm(message, callback);
+      } else {
+        const confirmed = confirm(message);
+        callback(confirmed);
+      }
+    } catch (error) {
+      console.error('Error showing confirm:', error);
       const confirmed = confirm(message);
       callback(confirmed);
     }
   };
 
   const hapticFeedback = (type: 'light' | 'medium' | 'heavy' = 'medium') => {
-    const tg = window.Telegram?.WebApp;
-    if (tg && tg.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred(type);
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred(type);
+      }
+    } catch (error) {
+      console.error('Error with haptic feedback:', error);
     }
   };
 
   const notificationFeedback = (type: 'error' | 'success' | 'warning') => {
-    const tg = window.Telegram?.WebApp;
-    if (tg && tg.HapticFeedback) {
-      tg.HapticFeedback.notificationOccurred(type);
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred(type);
+      }
+    } catch (error) {
+      console.error('Error with notification feedback:', error);
     }
   };
 
-  // Определяем, находимся ли мы в Telegram
   const isTelegramEnvironment = () => {
     return !!(
       window.Telegram?.WebApp ||
       navigator.userAgent.includes('Telegram') ||
-      new URLSearchParams(window.location.search).has('tgWebAppData') ||
+      window.location.search.includes('tgWebApp') ||
       (document.referrer && document.referrer.includes('t.me'))
     );
   };

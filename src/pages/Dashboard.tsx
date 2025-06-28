@@ -7,13 +7,9 @@ import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 import { WalletConnection } from '@/components/WalletConnection';
+import { PersonalCabinet } from '@/components/PersonalCabinet';
 
-// Импортируем компоненты динамически только при необходимости
-const ServiceCard = null; // Временно отключаем
-const InvestmentCalculator = null; // Временно отключаем
-const PersonalCabinet = null; // Временно отключаем
-
-// Простые данные вместо сложной загрузки
+// Простые данные для сервисов
 const SERVICE_REVENUE = {
   jobSearch: { totalRevenue: 5000000 },
   taxi: { totalRevenue: 3000000 },
@@ -24,25 +20,11 @@ const SERVICE_REVENUE = {
 const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
 export const Dashboard = () => {
-  const [showCalculator, setShowCalculator] = useState(false);
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
   
   const { user, showAlert, hapticFeedback } = useTelegram();
   const { wallet, isLoading: walletLoading } = useTelegramWallet();
-
-  const handleInvest = (percentage: number) => {
-    if (!wallet.isConnected) {
-      showAlert('Сначала подключите кошелек Telegram');
-      setShowWalletConnection(true);
-      return;
-    }
-    
-    showAlert(`Перенаправление в личный кабинет для покупки ${percentage}% доли`);
-    setShowCalculator(false);
-    setShowCabinet(true);
-    hapticFeedback('heavy');
-  };
 
   const handleLoginToCabinet = () => {
     if (!wallet.isConnected) {
@@ -89,8 +71,8 @@ export const Dashboard = () => {
     );
   }
 
-  // Показываем личный кабинет только если кошелек подключен
-  if (showCabinet && wallet.isConnected && PersonalCabinet) {
+  // Показываем личный кабинет
+  if (showCabinet && wallet.isConnected) {
     return (
       <TelegramLayout>
         <PersonalCabinet onBack={() => setShowCabinet(false)} />
@@ -267,21 +249,6 @@ export const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
-
-        {showCalculator && InvestmentCalculator && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="w-full max-w-md">
-              <InvestmentCalculator onInvest={handleInvest} />
-              <Button
-                variant="outline"
-                onClick={() => setShowCalculator(false)}
-                className="w-full mt-2 bg-white"
-              >
-                Закрыть
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
     </TelegramLayout>
   );
