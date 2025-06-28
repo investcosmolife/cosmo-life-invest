@@ -131,46 +131,111 @@ export const useTelegramWallet = () => {
     }
 
     try {
-      // Попытка использовать requestWallet если доступно
-      if (tg.requestWallet) {
-        console.log('Using requestWallet method...');
+      // Используем новый метод для подключения кошелька через Telegram WebApp
+      if (tg.requestWriteAccess) {
+        console.log('Requesting write access first...');
+        
         return new Promise((resolve) => {
-          tg.requestWallet!((walletData) => {
-            console.log('requestWallet callback:', walletData);
+          tg.requestWriteAccess!((granted) => {
+            console.log('Write access granted:', granted);
             
-            if (walletData && walletData.address) {
-              const savedData = {
-                address: walletData.address,
-                balance: walletData.balance || 0
-              };
-              localStorage.setItem('telegram_wallet_data', JSON.stringify(savedData));
-              setWallet({
-                isConnected: true,
-                address: savedData.address,
-                balance: savedData.balance
-              });
-              showAlert('Кошелек успешно подключен!');
-              resolve(true);
+            if (granted) {
+              // После получения доступа на запись, пытаемся подключить кошелек
+              console.log('Attempting to connect wallet after write access...');
+              
+              // Используем invokeCustomMethod для подключения кошелька
+              if (tg.invokeCustomMethod) {
+                tg.invokeCustomMethod('web_app_request_wallet', {}, (error, result) => {
+                  if (error) {
+                    console.error('Wallet connection error:', error);
+                    showAlert('Не удалось подключить кошелек. Убедитесь, что у вас установлен @wallet');
+                    resolve(false);
+                  } else {
+                    console.log('Wallet connection result:', result);
+                    if (result && result.address) {
+                      const walletData = {
+                        address: result.address,
+                        balance: result.balance || 0
+                      };
+                      localStorage.setItem('telegram_wallet_data', JSON.stringify(walletData));
+                      setWallet({
+                        isConnected: true,
+                        address: walletData.address,
+                        balance: walletData.balance
+                      });
+                      showAlert('Кошелек успешно подключен!');
+                      resolve(true);
+                    } else {
+                      showAlert('Не удалось получить данные кошелька');
+                      resolve(false);
+                    }
+                  }
+                });
+              } else {
+                // Fallback к старому методу
+                console.log('invokeCustomMethod not available, using openTelegramLink...');
+                if (tg.openTelegramLink) {
+                  tg.openTelegramLink('https://t.me/wallet?startapp=connect');
+                } else if (tg.openLink) {
+                  tg.openLink('https://t.me/wallet?startapp=connect');
+                }
+                showAlert('Откройте @wallet, подключите кошелек и вернитесь в приложение');
+                resolve(false);
+              }
             } else {
-              showAlert('Не удалось подключить кошелек');
+              showAlert('Необходимо разрешить доступ для подключения кошелька');
               resolve(false);
             }
           });
         });
       } else {
-        // Fallback - перенаправляем на @wallet
-        console.log('requestWallet not available, using fallback...');
+        // Прямая попытка подключения кошелька
+        console.log('Attempting direct wallet connection...');
         
-        if (tg.openTelegramLink) {
-          tg.openTelegramLink('https://t.me/wallet');
-          showAlert('Откройте @wallet в Telegram, создайте кошелек и перезапустите приложение');
-        } else if (tg.openLink) {
-          tg.openLink('https://t.me/wallet');
-          showAlert('Откройте @wallet в Telegram, создайте кошелек и перезапустите приложение');
+        if (tg.invokeCustomMethod) {
+          return new Promise((resolve) => {
+            tg.invokeCustomMethod!('web_app_request_wallet', {}, (error, result) => {
+              if (error) {
+                console.error('Direct wallet connection error:', error);
+                // Fallback к открытию @wallet
+                if (tg.openTelegramLink) {
+                  tg.openTelegramLink('https://t.me/wallet?startapp=connect');
+                  showAlert('Подключите кошелек в @wallet и вернитесь в приложение');
+                }
+                resolve(false);
+              } else {
+                console.log('Direct wallet connection result:', result);
+                if (result && result.address) {
+                  const walletData = {
+                    address: result.address,
+                    balance: result.balance || 0
+                  };
+                  localStorage.setItem('telegram_wallet_data', JSON.stringify(walletData));
+                  setWallet({
+                    isConnected: true,
+                    address: walletData.address,
+                    balance: walletData.balance
+                  });
+                  showAlert('Кошелек успешно подключен!');
+                  resolve(true);
+                } else {
+                  showAlert('Не удалось получить данные кошелька');
+                  resolve(false);
+                }
+              }
+            });
+          });
         } else {
-          showAlert('Установите @wallet в Telegram для подключения кошелька');
+          // Последний fallback
+          console.log('No custom methods available, using link fallback...');
+          if (tg.openTelegramLink) {
+            tg.openTelegramLink('https://t.me/wallet?startapp=connect');
+          } else if (tg.openLink) {
+            tg.openLink('https://t.me/wallet?startapp=connect');
+          }
+          showAlert('Установите @wallet в Telegram и повторите попытку');
+          return false;
         }
-        return false;
       }
     } catch (error) {
       console.error('Connect wallet error:', error);
@@ -201,28 +266,37 @@ export const useTelegramWallet = () => {
         comment
       });
 
-      // Попытка использовать sendTransaction если доступно
-      if (tg.sendTransaction) {
-        console.log('Using sendTransaction method...');
-        const transaction = {
-          to: toAddress,
-          value: nanoAmount.toString(),
-          data: comment
-        };
+      // Используем invokeCustomMethod для отправки платежа
+      if (tg.invokeCustomMethod) {
+        console.log('Using invokeCustomMethod for payment...');
         
-        const result = await tg.sendTransaction(transaction);
-        console.log('Transaction result:', result);
-        
-        if (result.success) {
-          showAlert('Платеж успешно отправлен!');
-          return true;
-        } else {
-          showAlert('Платеж отклонен или произошла ошибка');
-          return false;
-        }
+        return new Promise((resolve) => {
+          const paymentData = {
+            to: toAddress,
+            value: nanoAmount.toString(),
+            data: comment
+          };
+          
+          tg.invokeCustomMethod!('web_app_send_transaction', paymentData, (error, result) => {
+            if (error) {
+              console.error('Payment error:', error);
+              showAlert('Ошибка при отправке платежа');
+              resolve(false);
+            } else {
+              console.log('Payment result:', result);
+              if (result && result.success) {
+                showAlert('Платеж успешно отправлен!');
+                resolve(true);
+              } else {
+                showAlert('Платеж отклонен или произошла ошибка');
+                resolve(false);
+              }
+            }
+          });
+        });
       } else {
         // Fallback - создаем URL для платежа
-        console.log('sendTransaction not available, using payment URL...');
+        console.log('Using payment URL fallback...');
         const paymentUrl = `ton://transfer/${toAddress}?amount=${nanoAmount}&text=${encodeURIComponent(comment)}`;
         
         if (tg.openLink) {
