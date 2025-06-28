@@ -6,15 +6,20 @@ import { TelegramLayout } from '@/components/TelegramLayout';
 import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramWallet } from '@/hooks/useTelegramWallet';
-import { WalletConnection } from '@/components/WalletConnection';
 
-// Простые данные для сервисов
-const SERVICE_REVENUE = {
-  jobSearch: { totalRevenue: 5000000 },
-  taxi: { totalRevenue: 3000000 },
-  food: { totalRevenue: 2500000 },
-  housing: { totalRevenue: 2000000 }
+// Обновленные данные для сервисов (месячная доходность)
+const SERVICE_MONTHLY_REVENUE = {
+  jobSearch: { monthlyRevenue: 5000000 },
+  taxi: { monthlyRevenue: 3000000 },
+  food: { monthlyRevenue: 2500000 },
+  housing: { monthlyRevenue: 2500000 }
 };
+
+// Общие прогнозы
+const TOTAL_YEARLY_FORECAST = 156000000; // USD/год
+const INVESTMENT_AMOUNT = 100; // TON за 0.01%
+const YEARLY_RETURN = 15600; // USD/год при покупке 0.01%
+const ROI_PERCENTAGE = 5200; // % ROI в год
 
 const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
@@ -55,7 +60,7 @@ const PersonalCabinet = ({ onBack }: { onBack: () => void }) => {
         <CardContent>
           <div className="space-y-4">
             <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">1% = 1,000 TON</div>
+              <div className="text-2xl font-bold text-green-600">0.01% = {INVESTMENT_AMOUNT} TON</div>
               <div className="text-sm text-gray-600">Минимальная инвестиция</div>
             </div>
             <Button className="w-full bg-green-600 hover:bg-green-700">
@@ -68,18 +73,50 @@ const PersonalCabinet = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
+// Компонент подключения кошелька
+const WalletConnection = ({ onConnect }: { onConnect: () => void }) => {
+  const { wallet, connectWallet, isLoading } = useTelegramWallet();
+  
+  const handleConnect = async () => {
+    try {
+      await connectWallet();
+      onConnect();
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-center">Подключение кошелька</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-4">
+            Для доступа к инвестициям необходимо подключить кошелек
+          </p>
+          <Button 
+            onClick={handleConnect}
+            disabled={isLoading}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            {isLoading ? 'Подключение...' : 'Подключить кошелек'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export const Dashboard = () => {
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
   
-  const { user, showAlert, hapticFeedback } = useTelegram();
+  const { user, hapticFeedback } = useTelegram();
   const { wallet, isLoading: walletLoading } = useTelegramWallet();
 
-  console.log('Dashboard rendering...', { user, wallet, showCabinet, showWalletConnection });
-
   const handleLoginToCabinet = () => {
-    console.log('Login to cabinet clicked', { walletConnected: wallet.isConnected });
-    
     if (!wallet.isConnected) {
       hapticFeedback('medium');
       setShowWalletConnection(true);
@@ -91,13 +128,12 @@ export const Dashboard = () => {
   };
 
   const handleWalletConnected = () => {
-    console.log('Wallet connected, showing cabinet');
     setShowWalletConnection(false);
     setShowCabinet(true);
   };
 
-  const totalProjectedRevenue = Object.values(SERVICE_REVENUE)
-    .reduce((sum, service) => sum + (service?.totalRevenue || 0), 0);
+  const totalMonthlyRevenue = Object.values(SERVICE_MONTHLY_REVENUE)
+    .reduce((sum, service) => sum + (service?.monthlyRevenue || 0), 0);
 
   // Показываем экран подключения кошелька
   if (showWalletConnection) {
@@ -172,9 +208,6 @@ export const Dashboard = () => {
                   <Users className="h-4 w-4" />
                   <span className="text-sm">Цель: 1M пользователей</span>
                 </div>
-                <div className="text-lg font-bold">
-                  Общий прогноз дохода: {formatCurrency(totalProjectedRevenue)}
-                </div>
               </div>
             </div>
           </CardContent>
@@ -184,22 +217,22 @@ export const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
               <TrendingUp className="h-5 w-5" />
-              Инвестиционная возможность
+              Прогноз Инвестиционных возможностей
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center mb-4">
               <div className="text-2xl font-bold text-green-600 mb-2">
-                163,750 USD/год
+                {formatCurrency(TOTAL_YEARLY_FORECAST)}/год
               </div>
-              <p className="text-sm text-gray-600">
-                Прогнозируемая доходность при покупке 1% за 1,000 TON
+              <p className="text-sm text-gray-600 mb-3">
+                Прогнозируемая годовая доходность при покупке 0,01% за {INVESTMENT_AMOUNT} TON = {formatCurrency(YEARLY_RETURN)}/год
               </p>
             </div>
             
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="text-center p-3 bg-white rounded-lg">
-                <div className="text-lg font-bold text-blue-600">1,637%</div>
+                <div className="text-lg font-bold text-blue-600">{ROI_PERCENTAGE.toLocaleString()}%</div>
                 <div className="text-xs text-gray-600">ROI в год</div>
               </div>
               <div className="text-center p-3 bg-white rounded-lg">
@@ -227,42 +260,45 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <div id="services">
-          <h2 className="text-xl font-bold mb-4 text-center">
-            🚀 Наши сервисы
-          </h2>
-          
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg border">
-              <div className="text-2xl mb-2">💼</div>
-              <div className="text-sm font-medium mb-1">Поиск работы</div>
-              <div className="text-xs text-gray-600">
-                {formatCurrency(SERVICE_REVENUE.jobSearch.totalRevenue)}
+        <Card className="bg-gradient-to-r from-blue-50 to-green-50 border-blue-200">
+          <CardHeader>
+            <CardTitle className="text-center text-blue-800 flex items-center justify-center gap-2">
+              🚀 Прогнозируемая Доходность наших сервисов в месяц - {formatCurrency(totalMonthlyRevenue)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center p-4 bg-blue-50 rounded-lg border">
+                <div className="text-2xl mb-2">💼</div>
+                <div className="text-sm font-medium mb-1">Поиск работы</div>
+                <div className="text-xs text-blue-600 font-bold">
+                  {formatCurrency(SERVICE_MONTHLY_REVENUE.jobSearch.monthlyRevenue)}
+                </div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg border">
+                <div className="text-2xl mb-2">🚗</div>
+                <div className="text-sm font-medium mb-1">Заказ такси</div>
+                <div className="text-xs text-green-600 font-bold">
+                  {formatCurrency(SERVICE_MONTHLY_REVENUE.taxi.monthlyRevenue)}
+                </div>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg border">
+                <div className="text-2xl mb-2">🍔</div>
+                <div className="text-sm font-medium mb-1">Доставка еды</div>
+                <div className="text-xs text-orange-600 font-bold">
+                  {formatCurrency(SERVICE_MONTHLY_REVENUE.food.monthlyRevenue)}
+                </div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg border">
+                <div className="text-2xl mb-2">🏠</div>
+                <div className="text-sm font-medium mb-1">Аренда жилья</div>
+                <div className="text-xs text-purple-600 font-bold">
+                  {formatCurrency(SERVICE_MONTHLY_REVENUE.housing.monthlyRevenue)}
+                </div>
               </div>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg border">
-              <div className="text-2xl mb-2">🚗</div>
-              <div className="text-sm font-medium mb-1">Заказ такси</div>
-              <div className="text-xs text-gray-600">
-                {formatCurrency(SERVICE_REVENUE.taxi.totalRevenue)}
-              </div>
-            </div>
-            <div className="text-center p-4 bg-orange-50 rounded-lg border">
-              <div className="text-2xl mb-2">🍔</div>
-              <div className="text-sm font-medium mb-1">Доставка еды</div>
-              <div className="text-xs text-gray-600">
-                {formatCurrency(SERVICE_REVENUE.food.totalRevenue)}
-              </div>
-            </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg border">
-              <div className="text-2xl mb-2">🏠</div>
-              <div className="text-sm font-medium mb-1">Аренда жилья</div>
-              <div className="text-xs text-gray-600">
-                {formatCurrency(SERVICE_REVENUE.housing.totalRevenue)}
-              </div>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
