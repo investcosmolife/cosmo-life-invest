@@ -1,87 +1,32 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TelegramLayout } from '@/components/TelegramLayout';
 import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
+import { useTelegram } from '@/hooks/useTelegram';
+import { useTelegramWallet } from '@/hooks/useTelegramWallet';
+import { WalletConnection } from '@/components/WalletConnection';
+
+// Импортируем компоненты динамически только при необходимости
+const ServiceCard = null; // Временно отключаем
+const InvestmentCalculator = null; // Временно отключаем
+const PersonalCabinet = null; // Временно отключаем
+
+// Простые данные вместо сложной загрузки
+const SERVICE_REVENUE = {
+  jobSearch: { totalRevenue: 5000000 },
+  taxi: { totalRevenue: 3000000 },
+  food: { totalRevenue: 2500000 },
+  housing: { totalRevenue: 2000000 }
+};
+
+const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
 export const Dashboard = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
-  
-  // Состояния для динамически загружаемых компонентов
-  const [ServiceCard, setServiceCard] = useState<any>(null);
-  const [InvestmentCalculator, setInvestmentCalculator] = useState<any>(null);
-  const [PersonalCabinet, setPersonalCabinet] = useState<any>(null);
-  const [WalletConnection, setWalletConnection] = useState<any>(null);
-  const [useTelegram, setUseTelegram] = useState<any>(() => ({ user: null, showAlert: () => {}, hapticFeedback: () => {} }));
-  const [useTelegramWallet, setUseTelegramWallet] = useState<any>(() => ({ wallet: { isConnected: false }, isLoading: false, connectWallet: async () => false }));
-  const [SERVICE_REVENUE, setSERVICE_REVENUE] = useState<any>({});
-  const [formatCurrency, setFormatCurrency] = useState<any>(() => (value: number) => `$${value.toLocaleString()}`);
-
-  useEffect(() => {
-    const loadComponents = async () => {
-      // Загружаем ServiceCard
-      try {
-        const serviceCard = await import('@/components/ServiceCard');
-        setServiceCard(() => serviceCard.ServiceCard);
-      } catch (error) {
-        console.log('ServiceCard not available');
-      }
-
-      // Загружаем InvestmentCalculator
-      try {
-        const investmentCalc = await import('@/components/InvestmentCalculator');
-        setInvestmentCalculator(() => investmentCalc.InvestmentCalculator);
-      } catch (error) {
-        console.log('InvestmentCalculator not available');
-      }
-
-      // Загружаем PersonalCabinet
-      try {
-        const personalCab = await import('@/components/PersonalCabinet');
-        setPersonalCabinet(() => personalCab.PersonalCabinet);
-      } catch (error) {
-        console.log('PersonalCabinet not available');
-      }
-
-      // Загружаем WalletConnection
-      try {
-        const walletConn = await import('@/components/WalletConnection');
-        setWalletConnection(() => walletConn.WalletConnection);
-      } catch (error) {
-        console.log('WalletConnection not available');
-      }
-
-      // Загружаем useTelegram
-      try {
-        const telegram = await import('@/hooks/useTelegram');
-        setUseTelegram(() => telegram.useTelegram);
-      } catch (error) {
-        console.log('useTelegram not available');
-      }
-
-      // Загружаем useTelegramWallet
-      try {
-        const telegramWallet = await import('@/hooks/useTelegramWallet');
-        setUseTelegramWallet(() => telegramWallet.useTelegramWallet);
-      } catch (error) {
-        console.log('useTelegramWallet not available');
-      }
-
-      // Загружаем investment utils
-      try {
-        const investment = await import('@/utils/investment');
-        setSERVICE_REVENUE(investment.SERVICE_REVENUE || {});
-        setFormatCurrency(() => investment.formatCurrency || ((value: number) => `$${value.toLocaleString()}`));
-      } catch (error) {
-        console.log('investment utils not available');
-      }
-    };
-
-    loadComponents();
-  }, []);
   
   const { user, showAlert, hapticFeedback } = useTelegram();
   const { wallet, isLoading: walletLoading } = useTelegramWallet();
@@ -115,10 +60,10 @@ export const Dashboard = () => {
   };
 
   const totalProjectedRevenue = Object.values(SERVICE_REVENUE)
-    .reduce((sum: number, service: any) => sum + (service?.totalRevenue || 0), 0);
+    .reduce((sum, service) => sum + (service?.totalRevenue || 0), 0);
 
   // Показываем экран подключения кошелька
-  if (showWalletConnection && WalletConnection) {
+  if (showWalletConnection) {
     return (
       <TelegramLayout>
         <div className="space-y-4">
@@ -250,13 +195,36 @@ export const Dashboard = () => {
             🚀 Наши сервисы
           </h2>
           
-          {ServiceCard && Object.entries(SERVICE_REVENUE).map(([key, service]) => (
-            <ServiceCard
-              key={key}
-              serviceKey={key as keyof typeof SERVICE_REVENUE}
-              userPercentage={1}
-            />
-          ))}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg border">
+              <div className="text-2xl mb-2">💼</div>
+              <div className="text-sm font-medium mb-1">Поиск работы</div>
+              <div className="text-xs text-gray-600">
+                {formatCurrency(SERVICE_REVENUE.jobSearch.totalRevenue)}
+              </div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg border">
+              <div className="text-2xl mb-2">🚗</div>
+              <div className="text-sm font-medium mb-1">Заказ такси</div>
+              <div className="text-xs text-gray-600">
+                {formatCurrency(SERVICE_REVENUE.taxi.totalRevenue)}
+              </div>
+            </div>
+            <div className="text-center p-4 bg-orange-50 rounded-lg border">
+              <div className="text-2xl mb-2">🍔</div>
+              <div className="text-sm font-medium mb-1">Доставка еды</div>
+              <div className="text-xs text-gray-600">
+                {formatCurrency(SERVICE_REVENUE.food.totalRevenue)}
+              </div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg border">
+              <div className="text-2xl mb-2">🏠</div>
+              <div className="text-sm font-medium mb-1">Аренда жилья</div>
+              <div className="text-xs text-gray-600">
+                {formatCurrency(SERVICE_REVENUE.housing.totalRevenue)}
+              </div>
+            </div>
+          </div>
         </div>
 
         <Card>
