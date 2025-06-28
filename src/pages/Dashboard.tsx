@@ -1,74 +1,87 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TelegramLayout } from '@/components/TelegramLayout';
 import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
 
-// Безопасные импорты с проверкой
-let ServiceCard: any = null;
-let InvestmentCalculator: any = null;
-let PersonalCabinet: any = null;
-let WalletConnection: any = null;
-let useTelegram: any = () => ({ user: null, showAlert: () => {}, hapticFeedback: () => {} });
-let useTelegramWallet: any = () => ({ wallet: { isConnected: false }, isLoading: false, connectWallet: async () => false });
-let SERVICE_REVENUE: any = {};
-let formatCurrency: any = (value: number) => `$${value.toLocaleString()}`;
-
-try {
-  const serviceCard = await import('@/components/ServiceCard');
-  ServiceCard = serviceCard.ServiceCard;
-} catch (error) {
-  console.log('ServiceCard not available');
-}
-
-try {
-  const investmentCalc = await import('@/components/InvestmentCalculator');
-  InvestmentCalculator = investmentCalc.InvestmentCalculator;
-} catch (error) {
-  console.log('InvestmentCalculator not available');
-}
-
-try {
-  const personalCab = await import('@/components/PersonalCabinet');
-  PersonalCabinet = personalCab.PersonalCabinet;
-} catch (error) {
-  console.log('PersonalCabinet not available');
-}
-
-try {
-  const walletConn = await import('@/components/WalletConnection');
-  WalletConnection = walletConn.WalletConnection;
-} catch (error) {
-  console.log('WalletConnection not available');
-}
-
-try {
-  const telegram = await import('@/hooks/useTelegram');
-  useTelegram = telegram.useTelegram;
-} catch (error) {
-  console.log('useTelegram not available');
-}
-
-try {
-  const telegramWallet = await import('@/hooks/useTelegramWallet');
-  useTelegramWallet = telegramWallet.useTelegramWallet;
-} catch (error) {
-  console.log('useTelegramWallet not available');
-}
-
-try {
-  const investment = await import('@/utils/investment');
-  SERVICE_REVENUE = investment.SERVICE_REVENUE || {};
-  formatCurrency = investment.formatCurrency || formatCurrency;
-} catch (error) {
-  console.log('investment utils not available');
-}
-
 export const Dashboard = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
+  
+  // Состояния для динамически загружаемых компонентов
+  const [ServiceCard, setServiceCard] = useState<any>(null);
+  const [InvestmentCalculator, setInvestmentCalculator] = useState<any>(null);
+  const [PersonalCabinet, setPersonalCabinet] = useState<any>(null);
+  const [WalletConnection, setWalletConnection] = useState<any>(null);
+  const [useTelegram, setUseTelegram] = useState<any>(() => ({ user: null, showAlert: () => {}, hapticFeedback: () => {} }));
+  const [useTelegramWallet, setUseTelegramWallet] = useState<any>(() => ({ wallet: { isConnected: false }, isLoading: false, connectWallet: async () => false }));
+  const [SERVICE_REVENUE, setSERVICE_REVENUE] = useState<any>({});
+  const [formatCurrency, setFormatCurrency] = useState<any>(() => (value: number) => `$${value.toLocaleString()}`);
+
+  useEffect(() => {
+    const loadComponents = async () => {
+      // Загружаем ServiceCard
+      try {
+        const serviceCard = await import('@/components/ServiceCard');
+        setServiceCard(() => serviceCard.ServiceCard);
+      } catch (error) {
+        console.log('ServiceCard not available');
+      }
+
+      // Загружаем InvestmentCalculator
+      try {
+        const investmentCalc = await import('@/components/InvestmentCalculator');
+        setInvestmentCalculator(() => investmentCalc.InvestmentCalculator);
+      } catch (error) {
+        console.log('InvestmentCalculator not available');
+      }
+
+      // Загружаем PersonalCabinet
+      try {
+        const personalCab = await import('@/components/PersonalCabinet');
+        setPersonalCabinet(() => personalCab.PersonalCabinet);
+      } catch (error) {
+        console.log('PersonalCabinet not available');
+      }
+
+      // Загружаем WalletConnection
+      try {
+        const walletConn = await import('@/components/WalletConnection');
+        setWalletConnection(() => walletConn.WalletConnection);
+      } catch (error) {
+        console.log('WalletConnection not available');
+      }
+
+      // Загружаем useTelegram
+      try {
+        const telegram = await import('@/hooks/useTelegram');
+        setUseTelegram(() => telegram.useTelegram);
+      } catch (error) {
+        console.log('useTelegram not available');
+      }
+
+      // Загружаем useTelegramWallet
+      try {
+        const telegramWallet = await import('@/hooks/useTelegramWallet');
+        setUseTelegramWallet(() => telegramWallet.useTelegramWallet);
+      } catch (error) {
+        console.log('useTelegramWallet not available');
+      }
+
+      // Загружаем investment utils
+      try {
+        const investment = await import('@/utils/investment');
+        setSERVICE_REVENUE(investment.SERVICE_REVENUE || {});
+        setFormatCurrency(() => investment.formatCurrency || ((value: number) => `$${value.toLocaleString()}`));
+      } catch (error) {
+        console.log('investment utils not available');
+      }
+    };
+
+    loadComponents();
+  }, []);
   
   const { user, showAlert, hapticFeedback } = useTelegram();
   const { wallet, isLoading: walletLoading } = useTelegramWallet();
