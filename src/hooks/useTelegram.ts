@@ -9,10 +9,22 @@ export const useTelegram = () => {
   useEffect(() => {
     const initializeTelegram = () => {
       try {
+        console.log('Initializing Telegram...', {
+          hasTelegram: !!window.Telegram,
+          hasWebApp: !!window.Telegram?.WebApp,
+          userAgent: navigator.userAgent,
+          location: window.location.href
+        });
+
         // Проверяем наличие Telegram WebApp
         if (window.Telegram?.WebApp) {
           const tg = window.Telegram.WebApp;
-          console.log('Telegram WebApp detected');
+          console.log('Telegram WebApp detected', {
+            version: tg.version,
+            platform: tg.platform,
+            initData: tg.initData,
+            initDataUnsafe: tg.initDataUnsafe
+          });
           
           // Инициализируем WebApp
           tg.ready();
@@ -25,6 +37,17 @@ export const useTelegram = () => {
             setUser(userData);
           } else {
             console.log('No user data in initDataUnsafe');
+            // В development режиме создаем фиктивного пользователя
+            if (import.meta.env.DEV) {
+              console.log('Development mode: creating mock user');
+              setUser({
+                id: 123456789,
+                is_bot: false,
+                first_name: 'Test',
+                last_name: 'User',
+                username: 'testuser'
+              });
+            }
           }
           
           setIsLoading(false);
@@ -36,10 +59,28 @@ export const useTelegram = () => {
         const hasTelemgramParams = window.location.search.includes('tgWebApp');
         const isTelegramReferrer = document.referrer.includes('t.me');
 
+        console.log('Telegram environment check:', {
+          isTelegramUA,
+          hasTelemgramParams,
+          isTelegramReferrer,
+          referrer: document.referrer
+        });
+
         if (isTelegramUA || hasTelemgramParams || isTelegramReferrer) {
           console.log('Telegram environment detected via alternative method');
         } else {
           console.log('Running in development/web mode');
+          // В development режиме создаем фиктивного пользователя
+          if (import.meta.env.DEV) {
+            console.log('Development mode: creating mock user');
+            setUser({
+              id: 123456789,
+              is_bot: false,
+              first_name: 'Test',
+              last_name: 'User',
+              username: 'testuser'
+            });
+          }
         }
         
         setIsLoading(false);

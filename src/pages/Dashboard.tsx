@@ -7,7 +7,6 @@ import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 import { WalletConnection } from '@/components/WalletConnection';
-import { PersonalCabinet } from '@/components/PersonalCabinet';
 
 // Простые данные для сервисов
 const SERVICE_REVENUE = {
@@ -19,6 +18,56 @@ const SERVICE_REVENUE = {
 
 const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
+// Простой компонент личного кабинета
+const PersonalCabinet = ({ onBack }: { onBack: () => void }) => {
+  const { wallet } = useTelegramWallet();
+  
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-to-r from-green-600 to-blue-600 text-white border-0">
+        <CardHeader className="text-center pb-2">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="text-white hover:bg-white/20 p-2"
+            >
+              <ArrowUp className="h-4 w-4 rotate-[-90deg]" />
+            </Button>
+            <CardTitle className="text-xl font-bold">Личный кабинет</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center space-y-2">
+            <div className="bg-white/20 rounded-lg p-3">
+              <p className="text-sm">Кошелек подключен</p>
+              <p className="text-xs">{wallet.address?.slice(0, 8)}...{wallet.address?.slice(-8)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>💰 Инвестиционные возможности</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">1% = 1,000 TON</div>
+              <div className="text-sm text-gray-600">Минимальная инвестиция</div>
+            </div>
+            <Button className="w-full bg-green-600 hover:bg-green-700">
+              Купить долю
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 export const Dashboard = () => {
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
@@ -26,8 +75,13 @@ export const Dashboard = () => {
   const { user, showAlert, hapticFeedback } = useTelegram();
   const { wallet, isLoading: walletLoading } = useTelegramWallet();
 
+  console.log('Dashboard rendering...', { user, wallet, showCabinet, showWalletConnection });
+
   const handleLoginToCabinet = () => {
+    console.log('Login to cabinet clicked', { walletConnected: wallet.isConnected });
+    
     if (!wallet.isConnected) {
+      hapticFeedback('medium');
       setShowWalletConnection(true);
       return;
     }
@@ -37,6 +91,7 @@ export const Dashboard = () => {
   };
 
   const handleWalletConnected = () => {
+    console.log('Wallet connected, showing cabinet');
     setShowWalletConnection(false);
     setShowCabinet(true);
   };
