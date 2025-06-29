@@ -112,6 +112,17 @@ export const useTelegram = () => {
     }
   };
 
+  const notificationFeedback = (type: 'error' | 'success' | 'warning' = 'success') => {
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred(type);
+      }
+    } catch (error) {
+      console.error('Error with notification feedback:', error);
+    }
+  };
+
   console.log('useTelegram: Current state', { user, isLoading });
 
   return {
@@ -119,6 +130,7 @@ export const useTelegram = () => {
     isLoading,
     showAlert,
     hapticFeedback,
+    notificationFeedback,
     tg: window.Telegram?.WebApp,
     isTelegramEnvironment: !!window.Telegram?.WebApp
   };
