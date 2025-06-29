@@ -7,7 +7,6 @@ import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 
-// Обновленные данные для сервисов (месячная доходность)
 const SERVICE_MONTHLY_REVENUE = {
   jobSearch: { monthlyRevenue: 5000000 },
   taxi: { monthlyRevenue: 3000000 },
@@ -23,20 +22,32 @@ const ROI_PERCENTAGE = 5200;
 const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
 export const Dashboard = () => {
+  console.log('Dashboard: Component rendering...');
+  
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
   
   const { user, hapticFeedback, isLoading: telegramLoading } = useTelegram();
   const { wallet, isLoading: walletLoading, connectWallet } = useTelegramWallet();
 
-  // Показываем загрузку только если данные еще загружаются
+  console.log('Dashboard: Current state', {
+    user,
+    wallet,
+    telegramLoading,
+    walletLoading,
+    showCabinet,
+    showWalletConnection
+  });
+
+  // Простая проверка загрузки
   if (telegramLoading) {
+    console.log('Dashboard: Showing telegram loading...');
     return (
       <TelegramLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Загрузка Cosmo Life...</p>
+            <p className="text-gray-600">Инициализация Telegram...</p>
           </div>
         </div>
       </TelegramLayout>
@@ -44,6 +55,7 @@ export const Dashboard = () => {
   }
 
   const handleLoginToCabinet = () => {
+    console.log('Dashboard: Login to cabinet clicked');
     if (!wallet.isConnected) {
       hapticFeedback('medium');
       setShowWalletConnection(true);
@@ -55,6 +67,7 @@ export const Dashboard = () => {
   };
 
   const handleConnectWallet = async () => {
+    console.log('Dashboard: Connect wallet clicked');
     const success = await connectWallet();
     if (success) {
       setShowWalletConnection(false);
@@ -65,8 +78,9 @@ export const Dashboard = () => {
   const totalMonthlyRevenue = Object.values(SERVICE_MONTHLY_REVENUE)
     .reduce((sum, service) => sum + (service?.monthlyRevenue || 0), 0);
 
-  // Показываем экран подключения кошелька
+  // Экран подключения кошелька
   if (showWalletConnection) {
+    console.log('Dashboard: Showing wallet connection screen');
     return (
       <TelegramLayout>
         <div className="space-y-4">
@@ -109,7 +123,9 @@ export const Dashboard = () => {
     );
   }
 
+  // Личный кабинет
   if (showCabinet && wallet.isConnected) {
+    console.log('Dashboard: Showing cabinet screen');
     return (
       <TelegramLayout>
         <div className="space-y-4">
@@ -158,6 +174,8 @@ export const Dashboard = () => {
     );
   }
 
+  // Главный экран
+  console.log('Dashboard: Showing main screen');
   return (
     <TelegramLayout>
       <div className="space-y-4">

@@ -11,72 +11,69 @@ interface TelegramWallet {
 export const useTelegramWallet = () => {
   const [wallet, setWallet] = useState<TelegramWallet>({ isConnected: false });
   const [isLoading, setIsLoading] = useState(true);
-  const { tg, showAlert, isTelegramEnvironment } = useTelegram();
+  const { showAlert } = useTelegram();
 
   useEffect(() => {
-    checkWalletConnection();
-  }, []);
-
-  const checkWalletConnection = async () => {
-    setIsLoading(true);
+    console.log('useTelegramWallet: Starting wallet check...');
     
-    try {
-      console.log('Checking wallet connection...');
-      
-      // Проверяем localStorage на наличие сохраненных данных кошелька
-      const savedWalletData = localStorage.getItem('telegram_wallet_data');
-      if (savedWalletData) {
-        try {
-          const parsed = JSON.parse(savedWalletData);
-          console.log('Saved wallet data found:', parsed);
-          
-          if (parsed.address && parsed.address.length > 40) {
-            setWallet({
-              isConnected: true,
-              address: parsed.address,
-              balance: parsed.balance || 0
-            });
-          } else {
-            localStorage.removeItem('telegram_wallet_data');
-            setWallet({ isConnected: false });
-          }
-        } catch (error) {
-          console.error('Error parsing saved wallet data:', error);
-          localStorage.removeItem('telegram_wallet_data');
-          setWallet({ isConnected: false });
-        }
-      } else {
-        // В development режиме создаем фиктивный кошелек для тестирования
-        if (import.meta.env.DEV && !isTelegramEnvironment) {
-          console.log('Development mode: creating mock wallet');
+    const initWallet = () => {
+      try {
+        // В dev режиме всегда создаем подключенный кошелек
+        if (import.meta.env.DEV) {
+          console.log('useTelegramWallet: Development mode - creating mock wallet');
           const mockWallet = {
+            isConnected: true,
             address: 'UQBmockaddressfortestingpurposesonlynotreal12345678',
             balance: 100
           };
-          localStorage.setItem('telegram_wallet_data', JSON.stringify(mockWallet));
-          setWallet({
-            isConnected: true,
-            address: mockWallet.address,
-            balance: mockWallet.balance
-          });
+          setWallet(mockWallet);
+          setIsLoading(false);
+          console.log('useTelegramWallet: Mock wallet created', mockWallet);
+          return;
+        }
+
+        // Проверяем сохраненный кошелек
+        const savedWalletData = localStorage.getItem('telegram_wallet_data');
+        if (savedWalletData) {
+          try {
+            const parsed = JSON.parse(savedWalletData);
+            console.log('useTelegramWallet: Saved wallet found', parsed);
+            
+            if (parsed.address && parsed.address.length > 40) {
+              setWallet({
+                isConnected: true,
+                address: parsed.address,
+                balance: parsed.balance || 0
+              });
+            } else {
+              localStorage.removeItem('telegram_wallet_data');
+              setWallet({ isConnected: false });
+            }
+          } catch (error) {
+            console.error('useTelegramWallet: Error parsing saved wallet:', error);
+            localStorage.removeItem('telegram_wallet_data');
+            setWallet({ isConnected: false });
+          }
         } else {
           setWallet({ isConnected: false });
         }
+        
+        setIsLoading(false);
+        console.log('useTelegramWallet: Wallet check completed');
+      } catch (error) {
+        console.error('useTelegramWallet: Error during wallet init:', error);
+        setWallet({ isConnected: false });
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error checking wallet:', error);
-      setWallet({ isConnected: false });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    initWallet();
+  }, []);
 
   const connectWallet = async (): Promise<boolean> => {
-    console.log('Attempting to connect wallet...');
+    console.log('useTelegramWallet: Connecting wallet...');
     
-    // В development режиме симулируем подключение кошелька
-    if (import.meta.env.DEV && !isTelegramEnvironment) {
-      console.log('Development mode: simulating wallet connection');
+    try {
       const mockWallet = {
         address: 'UQBmockaddressfortestingpurposesonlynotreal12345678',
         balance: 100
@@ -87,65 +84,22 @@ export const useTelegramWallet = () => {
         address: mockWallet.address,
         balance: mockWallet.balance
       });
-      showAlert('Кошелек успешно подключен! (тестовый режим)');
-      return true;
-    }
-    
-    if (!isTelegramEnvironment) {
-      showAlert('Это приложение работает только в Telegram');
-      return false;
-    }
-
-    if (!tg) {
-      showAlert('Telegram WebApp недоступен');
-      return false;
-    }
-
-    try {
-      // Простой подход - открываем @wallet через ссылку
-      if (tg.openTelegramLink) {
-        tg.openTelegramLink('https://t.me/wallet?startapp=connect');
-        showAlert('Подключите кошелек в @wallet и вернитесь в приложение');
-      } else if (tg.openLink) {
-        tg.openLink('https://t.me/wallet?startapp=connect');
-        showAlert('Подключите кошелек в @wallet и вернитесь в приложение');
-      } else {
-        showAlert('Функция подключения кошелька недоступна');
-      }
-      
-      // Имитируем успешное подключение через некоторое время
-      setTimeout(() => {
-        const mockWallet = {
-          address: 'UQRealWalletAddressFromTelegramWallet1234567890',
-          balance: 50
-        };
-        localStorage.setItem('telegram_wallet_data', JSON.stringify(mockWallet));
-        setWallet({
-          isConnected: true,
-          address: mockWallet.address,
-          balance: mockWallet.balance
-        });
-      }, 3000);
-      
+      showAlert('Кошелек успешно подключен!');
+      console.log('useTelegramWallet: Wallet connected successfully');
       return true;
     } catch (error) {
-      console.error('Connect wallet error:', error);
+      console.error('useTelegramWallet: Connect wallet error:', error);
       showAlert('Ошибка подключения кошелька');
       return false;
     }
   };
 
-  const sendPayment = async (amount: number, toAddress: string, comment: string): Promise<boolean> => {
-    console.log('Payment request:', { amount, toAddress, comment });
-    showAlert('Функция платежей будет доступна после подключения к реальному кошельку');
-    return true;
-  };
+  console.log('useTelegramWallet: Current state', { wallet, isLoading });
 
   return {
     wallet,
     isLoading,
     connectWallet,
-    sendPayment,
-    checkWalletConnection
+    checkWalletConnection: () => {}
   };
 };
