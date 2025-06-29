@@ -15,11 +15,10 @@ const SERVICE_MONTHLY_REVENUE = {
   housing: { monthlyRevenue: 2500000 }
 };
 
-// Общие прогнозы
-const TOTAL_YEARLY_FORECAST = 156000000; // USD/год
-const INVESTMENT_AMOUNT = 100; // TON за 0.01%
-const YEARLY_RETURN = 15600; // USD/год при покупке 0.01%
-const ROI_PERCENTAGE = 5200; // % ROI в год
+const TOTAL_YEARLY_FORECAST = 156000000;
+const INVESTMENT_AMOUNT = 100;
+const YEARLY_RETURN = 15600;
+const ROI_PERCENTAGE = 5200;
 
 const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
@@ -27,8 +26,22 @@ export const Dashboard = () => {
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
   
-  const { user, hapticFeedback } = useTelegram();
+  const { user, hapticFeedback, isLoading: telegramLoading } = useTelegram();
   const { wallet, isLoading: walletLoading, connectWallet } = useTelegramWallet();
+
+  // Показываем загрузку только если данные еще загружаются
+  if (telegramLoading) {
+    return (
+      <TelegramLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Загрузка Cosmo Life...</p>
+          </div>
+        </div>
+      </TelegramLayout>
+    );
+  }
 
   const handleLoginToCabinet = () => {
     if (!wallet.isConnected) {
@@ -96,7 +109,6 @@ export const Dashboard = () => {
     );
   }
 
-  // Показываем личный кабинет
   if (showCabinet && wallet.isConnected) {
     return (
       <TelegramLayout>

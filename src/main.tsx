@@ -13,10 +13,4 @@ console.log('Starting Cosmo Life app...');
 
 const root = createRoot(container);
 
-try {
-  root.render(<App />);
-  console.log('App rendered successfully');
-} catch (error) {
-  console.error('Failed to render app:', error);
-  container.innerHTML = '<div style="padding: 20px; text-align: center;">Ошибка загрузки приложения. Попробуйте обновить страницу.</div>';
-}
+root.render(<App />);
