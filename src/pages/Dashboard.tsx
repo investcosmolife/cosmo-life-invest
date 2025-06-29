@@ -23,98 +23,12 @@ const ROI_PERCENTAGE = 5200; // % ROI в год
 
 const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
-// Простой компонент личного кабинета
-const PersonalCabinet = ({ onBack }: { onBack: () => void }) => {
-  const { wallet } = useTelegramWallet();
-  
-  return (
-    <div className="space-y-4">
-      <Card className="bg-gradient-to-r from-green-600 to-blue-600 text-white border-0">
-        <CardHeader className="text-center pb-2">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="text-white hover:bg-white/20 p-2"
-            >
-              <ArrowUp className="h-4 w-4 rotate-[-90deg]" />
-            </Button>
-            <CardTitle className="text-xl font-bold">Личный кабинет</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center space-y-2">
-            <div className="bg-white/20 rounded-lg p-3">
-              <p className="text-sm">Кошелек подключен</p>
-              <p className="text-xs">{wallet.address?.slice(0, 8)}...{wallet.address?.slice(-8)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>💰 Инвестиционные возможности</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">0.01% = {INVESTMENT_AMOUNT} TON</div>
-              <div className="text-sm text-gray-600">Минимальная инвестиция</div>
-            </div>
-            <Button className="w-full bg-green-600 hover:bg-green-700">
-              Купить долю
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-// Компонент подключения кошелька
-const WalletConnection = ({ onConnect }: { onConnect: () => void }) => {
-  const { wallet, connectWallet, isLoading } = useTelegramWallet();
-  
-  const handleConnect = async () => {
-    try {
-      await connectWallet();
-      onConnect();
-    } catch (error) {
-      console.error('Wallet connection error:', error);
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-center">Подключение кошелька</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-center">
-          <p className="text-sm text-gray-600 mb-4">
-            Для доступа к инвестициям необходимо подключить кошелек
-          </p>
-          <Button 
-            onClick={handleConnect}
-            disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-          >
-            {isLoading ? 'Подключение...' : 'Подключить кошелек'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
 export const Dashboard = () => {
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
   
   const { user, hapticFeedback } = useTelegram();
-  const { wallet, isLoading: walletLoading } = useTelegramWallet();
+  const { wallet, isLoading: walletLoading, connectWallet } = useTelegramWallet();
 
   const handleLoginToCabinet = () => {
     if (!wallet.isConnected) {
@@ -127,9 +41,12 @@ export const Dashboard = () => {
     setShowCabinet(true);
   };
 
-  const handleWalletConnected = () => {
-    setShowWalletConnection(false);
-    setShowCabinet(true);
+  const handleConnectWallet = async () => {
+    const success = await connectWallet();
+    if (success) {
+      setShowWalletConnection(false);
+      setShowCabinet(true);
+    }
   };
 
   const totalMonthlyRevenue = Object.values(SERVICE_MONTHLY_REVENUE)
@@ -156,7 +73,24 @@ export const Dashboard = () => {
             </CardHeader>
           </Card>
           
-          <WalletConnection onConnect={handleWalletConnected} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">Подключение кошелька</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-4">
+                  Для доступа к инвестициям необходимо подключить кошелек
+                </p>
+                <Button 
+                  onClick={handleConnectWallet}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  Подключить кошелек
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </TelegramLayout>
     );
@@ -166,15 +100,50 @@ export const Dashboard = () => {
   if (showCabinet && wallet.isConnected) {
     return (
       <TelegramLayout>
-        <PersonalCabinet onBack={() => setShowCabinet(false)} />
+        <div className="space-y-4">
+          <Card className="bg-gradient-to-r from-green-600 to-blue-600 text-white border-0">
+            <CardHeader className="text-center pb-2">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCabinet(false)}
+                  className="text-white hover:bg-white/20 p-2"
+                >
+                  <ArrowUp className="h-4 w-4 rotate-[-90deg]" />
+                </Button>
+                <CardTitle className="text-xl font-bold">Личный кабинет</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center space-y-2">
+                <div className="bg-white/20 rounded-lg p-3">
+                  <p className="text-sm">Кошелек подключен</p>
+                  <p className="text-xs">{wallet.address?.slice(0, 8)}...{wallet.address?.slice(-8)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>💰 Инвестиционные возможности</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">0.01% = {INVESTMENT_AMOUNT} TON</div>
+                  <div className="text-sm text-gray-600">Минимальная инвестиция</div>
+                </div>
+                <Button className="w-full bg-green-600 hover:bg-green-700">
+                  Купить долю
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </TelegramLayout>
     );
-  }
-
-  // Если пытаемся показать кабинет без подключенного кошелька
-  if (showCabinet && !wallet.isConnected) {
-    setShowCabinet(false);
-    setShowWalletConnection(true);
   }
 
   return (
