@@ -1,11 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TelegramLayout } from '@/components/TelegramLayout';
 import { ArrowUp, TrendingUp, Users, User, Wallet } from 'lucide-react';
-import { useTelegram } from '@/hooks/useTelegram';
-import { useTelegramWallet } from '@/hooks/useTelegramWallet';
 
 const SERVICE_MONTHLY_REVENUE = {
   jobSearch: { monthlyRevenue: 5000000 },
@@ -22,61 +20,66 @@ const ROI_PERCENTAGE = 5200;
 const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
 
 export const Dashboard = () => {
-  console.log('Dashboard: Component rendering...');
+  console.log('Dashboard: Starting render...');
   
   const [showCabinet, setShowCabinet] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
+  const [appReady, setAppReady] = useState(false);
   
-  const { user, hapticFeedback, isLoading: telegramLoading } = useTelegram();
-  const { wallet, isLoading: walletLoading, connectWallet } = useTelegramWallet();
+  // Простая инициализация без хуков
+  const user = {
+    id: 123456789,
+    is_bot: false,
+    first_name: 'Test',
+    last_name: 'User',
+    username: 'testuser'
+  };
+  
+  const wallet = {
+    isConnected: true,
+    address: 'UQBmockaddressfortestingpurposesonlynotreal12345678',
+    balance: 100
+  };
 
-  console.log('Dashboard: Current state', {
-    user,
-    wallet,
-    telegramLoading,
-    walletLoading,
-    showCabinet,
-    showWalletConnection
-  });
-
-  // Простая проверка загрузки
-  if (telegramLoading) {
-    console.log('Dashboard: Showing telegram loading...');
-    return (
-      <TelegramLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Инициализация Telegram...</p>
-          </div>
-        </div>
-      </TelegramLayout>
-    );
-  }
+  useEffect(() => {
+    console.log('Dashboard: Setting app ready...');
+    setAppReady(true);
+  }, []);
 
   const handleLoginToCabinet = () => {
     console.log('Dashboard: Login to cabinet clicked');
-    if (!wallet.isConnected) {
-      hapticFeedback('medium');
-      setShowWalletConnection(true);
-      return;
-    }
-    
-    hapticFeedback('medium');
     setShowCabinet(true);
   };
 
   const handleConnectWallet = async () => {
     console.log('Dashboard: Connect wallet clicked');
-    const success = await connectWallet();
-    if (success) {
-      setShowWalletConnection(false);
-      setShowCabinet(true);
-    }
+    setShowWalletConnection(false);
+    setShowCabinet(true);
   };
 
   const totalMonthlyRevenue = Object.values(SERVICE_MONTHLY_REVENUE)
     .reduce((sum, service) => sum + (service?.monthlyRevenue || 0), 0);
+
+  console.log('Dashboard: Rendering with state:', {
+    appReady,
+    showCabinet,
+    showWalletConnection,
+    user,
+    wallet
+  });
+
+  // Простая проверка готовности
+  if (!appReady) {
+    console.log('Dashboard: App not ready, showing simple loading...');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загружаем приложение...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Экран подключения кошелька
   if (showWalletConnection) {
@@ -124,7 +127,7 @@ export const Dashboard = () => {
   }
 
   // Личный кабинет
-  if (showCabinet && wallet.isConnected) {
+  if (showCabinet) {
     console.log('Dashboard: Showing cabinet screen');
     return (
       <TelegramLayout>
@@ -192,7 +195,7 @@ export const Dashboard = () => {
               <p className="text-sm mb-2">
                 Добро пожаловать, {user?.first_name || 'Инвестор'}! 👋
               </p>
-              {!walletLoading && wallet.isConnected && (
+              {wallet.isConnected && (
                 <div className="bg-white/20 rounded-lg p-2 mb-2">
                   <div className="flex items-center justify-center gap-2 text-sm">
                     <Wallet className="h-4 w-4 text-green-300" />
