@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -43,12 +43,8 @@ jobs:
         run: |
           echo "Build directory contents:"
           ls -la dist/
-          if [ -f "dist/index.html" ]; then
-            echo "Index.html found, first 10 lines:"
-            head -10 dist/index.html
-          else
-            echo "Index.html not found!"
-          fi
+          echo "Index.html contents:"
+          cat dist/index.html
         
       - name: Setup Pages
         uses: actions/configure-pages@v4

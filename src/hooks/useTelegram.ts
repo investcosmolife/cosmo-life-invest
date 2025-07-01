@@ -7,84 +7,93 @@ export const useTelegram = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log('useTelegram: Starting initialization...');
-    
     const initializeTelegram = () => {
       try {
-        console.log('useTelegram: Checking environment...', {
+        console.log('Initializing Telegram...', {
           hasTelegram: !!window.Telegram,
           hasWebApp: !!window.Telegram?.WebApp,
-          isDev: import.meta.env.DEV,
-          userAgent: navigator.userAgent.substring(0, 100)
+          userAgent: navigator.userAgent,
+          location: window.location.href
         });
 
-        // Сразу создаем тестового пользователя в dev режиме
-        if (import.meta.env.DEV) {
-          console.log('useTelegram: Development mode - creating test user');
-          const testUser = {
-            id: 123456789,
-            is_bot: false,
-            first_name: 'Test',
-            last_name: 'User',
-            username: 'testuser'
-          };
-          setUser(testUser);
-          setIsLoading(false);
-          console.log('useTelegram: Test user created successfully', testUser);
-          return;
-        }
-
-        // Проверяем Telegram WebApp
+        // Проверяем наличие Telegram WebApp
         if (window.Telegram?.WebApp) {
           const tg = window.Telegram.WebApp;
-          console.log('useTelegram: Telegram WebApp found', {
+          console.log('Telegram WebApp detected', {
             version: tg.version,
-            platform: tg.platform
+            platform: tg.platform,
+            initData: tg.initData,
+            initDataUnsafe: tg.initDataUnsafe
           });
           
+          // Инициализируем WebApp
           tg.ready();
           tg.expand();
           
+          // Получаем данные пользователя
           const userData = tg.initDataUnsafe?.user;
           if (userData) {
-            console.log('useTelegram: Real user data found', userData);
+            console.log('User data found:', userData);
             setUser(userData);
           } else {
-            console.log('useTelegram: No user data, creating fallback');
+            console.log('No user data in initDataUnsafe');
+            // В development режиме создаем фиктивного пользователя
+            if (import.meta.env.DEV) {
+              console.log('Development mode: creating mock user');
+              setUser({
+                id: 123456789,
+                is_bot: false,
+                first_name: 'Test',
+                last_name: 'User',
+                username: 'testuser'
+              });
+            }
+          }
+          
+          setIsLoading(false);
+          return;
+        }
+
+        // Проверяем другие признаки Telegram среды
+        const isTelegramUA = navigator.userAgent.includes('Telegram');
+        const hasTelemgramParams = window.location.search.includes('tgWebApp');
+        const isTelegramReferrer = document.referrer.includes('t.me');
+
+        console.log('Telegram environment check:', {
+          isTelegramUA,
+          hasTelemgramParams,
+          isTelegramReferrer,
+          referrer: document.referrer
+        });
+
+        if (isTelegramUA || hasTelemgramParams || isTelegramReferrer) {
+          console.log('Telegram environment detected via alternative method');
+        } else {
+          console.log('Running in development/web mode');
+          // В development режиме создаем фиктивного пользователя
+          if (import.meta.env.DEV) {
+            console.log('Development mode: creating mock user');
             setUser({
-              id: 987654321,
+              id: 123456789,
               is_bot: false,
-              first_name: 'Telegram',
-              last_name: 'User'
+              first_name: 'Test',
+              last_name: 'User',
+              username: 'testuser'
             });
           }
-        } else {
-          console.log('useTelegram: No Telegram WebApp, creating fallback user');
-          setUser({
-            id: 111111111,
-            is_bot: false,
-            first_name: 'Web',
-            last_name: 'User'
-          });
         }
         
         setIsLoading(false);
-        console.log('useTelegram: Initialization completed');
       } catch (error) {
-        console.error('useTelegram: Error during initialization:', error);
-        // Всегда создаем fallback пользователя при ошибке
-        setUser({
-          id: 999999999,
-          is_bot: false,
-          first_name: 'Fallback',
-          last_name: 'User'
-        });
+        console.error('Error initializing Telegram:', error);
         setIsLoading(false);
       }
     };
 
-    // Инициализируем сразу без задержки
-    initializeTelegram();
+    // Небольшая задержка для инициализации Telegram
+    const timeout = setTimeout(initializeTelegram, 100);
+    
+    return () => clearTimeout(timeout);
   }, []);
 
   const showAlert = (message: string) => {
@@ -101,6 +110,22 @@ export const useTelegram = () => {
     }
   };
 
+  const showConfirm = (message: string, callback: (confirmed: boolean) => void) => {
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg && tg.showConfirm) {
+        tg.showConfirm(message, callback);
+      } else {
+        const confirmed = confirm(message);
+        callback(confirmed);
+      }
+    } catch (error) {
+      console.error('Error showing confirm:', error);
+      const confirmed = confirm(message);
+      callback(confirmed);
+    }
+  };
+
   const hapticFeedback = (type: 'light' | 'medium' | 'heavy' = 'medium') => {
     try {
       const tg = window.Telegram?.WebApp;
@@ -112,7 +137,7 @@ export const useTelegram = () => {
     }
   };
 
-  const notificationFeedback = (type: 'error' | 'success' | 'warning' = 'success') => {
+  const notificationFeedback = (type: 'error' | 'success' | 'warning') => {
     try {
       const tg = window.Telegram?.WebApp;
       if (tg && tg.HapticFeedback) {
@@ -123,15 +148,23 @@ export const useTelegram = () => {
     }
   };
 
-  console.log('useTelegram: Current state', { user, isLoading });
+  const isTelegramEnvironment = () => {
+    return !!(
+      window.Telegram?.WebApp ||
+      navigator.userAgent.includes('Telegram') ||
+      window.location.search.includes('tgWebApp') ||
+      (document.referrer && document.referrer.includes('t.me'))
+    );
+  };
 
   return {
     user,
     isLoading,
     showAlert,
+    showConfirm,
     hapticFeedback,
     notificationFeedback,
     tg: window.Telegram?.WebApp,
-    isTelegramEnvironment: !!window.Telegram?.WebApp
+    isTelegramEnvironment: isTelegramEnvironment()
   };
 };
